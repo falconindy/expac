@@ -134,9 +134,9 @@ static void usage(void) {
       "  -S, --sync                search sync DBs\n\n"
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
-      "  -h, --help                display this help and exit\n"
-      "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n"
-      "  -v, --verbose             show errors while printing\n\n");
+      "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n\n"
+      "  -v, --verbose             be more verbose\n\n"
+      "  -h, --help                display this help and exit\n\n");
 }
 
 static int parse_options(int argc, char *argv[]) {
