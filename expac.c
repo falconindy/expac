@@ -7,13 +7,15 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <assert.h>
 
 #define FORMAT_TOKENS "BCDEFGLNOPRSabdfiklmnoprsuv%"
 #define ESCAPE_TOKENS "\"\\abefnrtv"
 
 alpm_list_t *dblist = NULL, *targets = NULL;
 pmdb_t *db_local;
-int verbose = 0;
+bool verbose = false;
+bool search = false;
 const char *format = NULL;
 const char *timefmt = NULL;
 const char *listdelim = NULL;
@@ -132,6 +134,7 @@ static void usage(void) {
       " Options:\n"
       "  -Q, --local               search local DB (default)\n"
       "  -S, --sync                search sync DBs\n\n"
+      "  -s, --search              search for matching strings\n"
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
       "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n\n"
@@ -148,12 +151,13 @@ static int parse_options(int argc, char *argv[]) {
     {"help",      no_argument,        0, 'h'},
     {"local",     no_argument,        0, 'Q'},
     {"sync",      no_argument,        0, 'S'},
+    {"search",    no_argument,        0, 's'},
     {"timefmt",   required_argument,  0, 't'},
     {"verbose",   no_argument,        0, 'v'},
     {0, 0, 0, 0}
   };
 
-  while (-1 != (opt = getopt_long(argc, argv, "l:d:hf:QSt:v", opts, &option_index))) {
+  while (-1 != (opt = getopt_long(argc, argv, "l:d:hf:QSst:v", opts, &option_index))) {
     switch (opt) {
       case 'S':
         if (dblist) {
@@ -178,11 +182,14 @@ static int parse_options(int argc, char *argv[]) {
       case 'h':
         usage();
         return(1);
+      case 's':
+        search = true;
+        break;
       case 't':
         timefmt = optarg;
         break;
       case 'v':
-        verbose = 1;
+        verbose = true;
         break;
 
       case '?':
@@ -292,35 +299,9 @@ static void print_time(time_t timestamp) {
   printf("%s", buffer);
 }
 
-static int print_pkg(alpm_list_t *dblist, const char *p, const char *format) {
-  alpm_list_t *i;
-  pmpkg_t *pkg;
+static int print_pkg(pmpkg_t *pkg, const char *format) {
   const char *f;
-  char *repo, *pkgname;
-
-  pkgname = repo = (char*)p;
-  if (strchr(pkgname, '/')) {
-    strsep(&pkgname, "/");
-  } else {
-    repo = NULL;
-  }
-
-  for (i = dblist; i; i = alpm_list_next(i)) {
-    pkg = alpm_db_get_pkg(alpm_list_getdata(i), pkgname);
-    if (repo && strcmp(repo, alpm_db_get_name(alpm_list_getdata(i))) != 0) {
-      continue;
-    }
-    if (pkg) {
-      break;
-    }
-  }
-
-  if (!pkg) {
-    if (verbose) {
-      fprintf(stderr, "error: package `%s' not found\n", pkgname);
-    }
-    return(1);
-  }
+  assert(pkg);
 
   for (f = format; *f != '\0'; f++) {
     bool shortdeps = false;
@@ -446,9 +427,55 @@ int verify_format_string(const char *format) {
   return(0);
 }
 
+alpm_list_t *resolve_pkg(alpm_list_t *targets) {
+  char *pkgname, *reponame;
+  alpm_list_t *t, *r, *ret = NULL;
+
+  if (search) {
+    for (r = dblist; r; r = alpm_list_next(r)) {
+      ret = alpm_list_join(ret, alpm_db_search(alpm_list_getdata(r), targets));
+    }
+  } else {
+    for (t = targets; t; t = alpm_list_next(t)) {
+      pkgname = alpm_list_getdata(t);
+      if (strchr(pkgname, '/')) {
+        strsep(&pkgname, "/");
+      } else {
+        reponame = NULL;
+      }
+
+      for (r = dblist; r; r = alpm_list_next(r)) {
+        pmpkg_t *pkg;
+
+        pkg = alpm_db_get_pkg(alpm_list_getdata(r), pkgname);
+
+#ifdef _HAVE_ALPM_FIND_SATISFIER
+        if (!pkg) {
+          pkg = alpm_find_satisfier(alpm_db_get_pkgcache(alpm_list_getdata(r)), pkgname);
+        }
+#endif
+
+        if (reponame && strcmp(reponame, alpm_db_get_name(alpm_list_getdata(r))) != 0) {
+          continue;
+        }
+        if (!pkg) {
+          if (verbose) {
+            fprintf(stderr, "error: package `%s' not found\n", pkgname);
+          }
+          continue;
+        }
+
+        ret = alpm_list_add(ret, pkg);
+      }
+    }
+  }
+
+  return(ret);
+}
+
 int main(int argc, char *argv[]) {
   int ret = 0, freelist = 0;
-  alpm_list_t *i;
+  alpm_list_t *results, *i;
 
   ret = alpm_init();
   if (ret != 0) {
@@ -473,10 +500,19 @@ int main(int argc, char *argv[]) {
     return(1);
   }
 
-  for (i = targets; i; i = alpm_list_next(i)) {
-    ret += print_pkg(dblist, alpm_list_getdata(i), format);
+  results = resolve_pkg(targets);
+  if (!results) {
+    ret = 1;
+    goto finish;
+  }
+
+  for (i = results; i; i = alpm_list_next(i)) {
+    pmpkg_t *pkg = alpm_list_getdata(i);
+    ret += print_pkg(pkg, format);
   }
   ret = !!ret; /* clamp to zero/one */
+
+  alpm_list_free(results);
 
   if (freelist) {
     alpm_list_free(dblist);
