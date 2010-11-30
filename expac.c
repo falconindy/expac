@@ -437,7 +437,7 @@ int verify_format_string(const char *format) {
     if (*p == '%' && !strchr(FORMAT_TOKENS, *++p)) {
       fprintf(stderr, "error: bad token in format string: %%%c\n", *p);
       return(1);
-    } else if (*p == '\\' && !strchr(ESCAPE_TOKENS, *p)) {
+    } else if (*p == '\\' && !strchr(ESCAPE_TOKENS, *++p)) {
       fprintf(stderr, "error: bad token in format string: \\%c\n", *p);
       return(1);
     }
@@ -476,7 +476,7 @@ int main(int argc, char *argv[]) {
   for (i = targets; i; i = alpm_list_next(i)) {
     ret += print_pkg(dblist, alpm_list_getdata(i), format);
   }
-  ret = !!ret;
+  ret = !!ret; /* clamp to zero/one */
 
   if (freelist) {
     alpm_list_free(dblist);
