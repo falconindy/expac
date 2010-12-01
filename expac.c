@@ -34,13 +34,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FORMAT_TOKENS "BCDEFGLNOPRSabdfiklmnprsuv%"
+#define FORMAT_TOKENS "BCDEFGLNOPRSabdfiklmnprsuvw%"
 #define ESCAPE_TOKENS "\"\\abefnrtv"
 
 alpm_list_t *dblist = NULL, *targets = NULL;
 pmdb_t *db_local;
 bool verbose = false;
 bool search = false;
+bool local = false;
 const char *format = NULL;
 const char *timefmt = NULL;
 const char *listdelim = NULL;
@@ -197,6 +198,7 @@ static int parse_options(int argc, char *argv[]) {
           return(1);
         }
         dblist = alpm_list_add(dblist, db_local);
+        local = true;
         break;
       case 'd':
         delim = optarg;
@@ -373,6 +375,9 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
         case 'r': /* repo */
           out += printf("%s", alpm_db_get_name(alpm_pkg_get_db(pkg)));
           break;
+        case 'w': /* install reason */
+          out += printf("%s", alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
+          break;
 
         /* times */
         case 'b': /* build date */
@@ -529,6 +534,7 @@ int main(int argc, char *argv[]) {
 
   /* ensure sane defaults */
   if (!dblist) {
+    local = true;
     dblist = alpm_list_add(dblist, db_local);
   }
   delim = delim ? delim : "\n";

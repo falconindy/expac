@@ -95,7 +95,7 @@ The format argument allows the following interpreted sequences:
 
   %f    filename (only with -S)
 
-  %i    has install scriptlet
+  %i    has install scriptlet (only with -Q)
 
   %k    download size
 
@@ -114,6 +114,8 @@ The format argument allows the following interpreted sequences:
   %u    project URL
 
   %v    version
+
+  %w    install reason
 
   %%    literal %
 
