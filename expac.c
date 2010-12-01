@@ -34,6 +34,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEFAULT_DELIM        "\n"
+#define DEFAULT_LISTDELIM    "  "
+#define DEFAULT_TIMEFMT      "%c"
 #define FORMAT_TOKENS        "BCDEGLNOPRSabdkmnprsuvw%"
 #define FORMAT_TOKENS_LOCAL  "ilFw"
 #define FORMAT_TOKENS_SYNC   "f"
@@ -535,7 +538,7 @@ alpm_list_t *resolve_pkg(alpm_list_t *targets) {
 }
 
 int main(int argc, char *argv[]) {
-  int ret = 0;
+  int ret;
   alpm_list_t *results, *i;
 
   ret = alpm_init();
@@ -553,9 +556,9 @@ int main(int argc, char *argv[]) {
     local = true;
     dblist = alpm_list_add(dblist, db_local);
   }
-  delim = delim ? delim : "\n";
-  listdelim = listdelim ? listdelim : "  ";
-  timefmt = timefmt ? timefmt : "%c";
+  delim = delim ? delim : DEFAULT_DELIM;
+  listdelim = listdelim ? listdelim : DEFAULT_LISTDELIM;
+  timefmt = timefmt ? timefmt : DEFAULT_TIMEFMT;
 
   if (verify_format_string(format) != 0) {
     return(1);
