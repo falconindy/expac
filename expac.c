@@ -41,7 +41,6 @@ alpm_list_t *dblist = NULL, *targets = NULL;
 pmdb_t *db_local;
 bool verbose = false;
 bool search = false;
-bool local = false;
 const char *format = NULL;
 const char *timefmt = NULL;
 const char *listdelim = NULL;
@@ -198,7 +197,6 @@ static int parse_options(int argc, char *argv[]) {
           return(1);
         }
         dblist = alpm_list_add(dblist, db_local);
-        local = true;
         break;
       case 'd':
         delim = optarg;
@@ -534,7 +532,6 @@ int main(int argc, char *argv[]) {
 
   /* ensure sane defaults */
   if (!dblist) {
-    local = true;
     dblist = alpm_list_add(dblist, db_local);
   }
   delim = delim ? delim : "\n";
