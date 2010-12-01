@@ -3,9 +3,9 @@
 #include <ctype.h>
 #include <getopt.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 
 #define FORMAT_TOKENS "BCDEFGLNOPRSabdfiklmnprsuv%"
@@ -266,7 +266,7 @@ static void print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
   while (1) {
     char *item;
 
-    item = fn ? (char*)fn(alpm_list_getdata(i)) : (char*)alpm_list_getdata(i);
+    item = (char*)(fn ? fn(alpm_list_getdata(i)) : alpm_list_getdata(i));
 
     if (shortdeps) {
       *(item + strcspn(item, "<>=")) = '\0';
@@ -294,6 +294,7 @@ static void print_time(time_t timestamp) {
     return;
   }
 
+  /* no overflow here, strftime prints a max of 64 including null */
   strftime(&buffer[0], 64, timefmt, localtime(&timestamp));
   printf("%s", buffer);
 }
@@ -394,7 +395,7 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
           break;
       }
     } else if (*f == '\\') {
-      char buf[3];
+      char buf[3]; /* its not safe to do this in a single sprintf */
       buf[0] = *f;
       buf[1] = *++f;
       buf[2] = '\0';
@@ -477,7 +478,7 @@ int main(int argc, char *argv[]) {
 
   ret = alpm_init();
   if (ret != 0) {
-    return(1);
+    return(ret);
   }
 
   ret = parse_options(argc, argv);
@@ -485,7 +486,7 @@ int main(int argc, char *argv[]) {
     goto finish;
   }
 
-  /* default vals */
+  /* ensure sane defaults */
   if (!dblist) {
     dblist = alpm_list_add(dblist, db_local);
   }
