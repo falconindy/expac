@@ -164,7 +164,7 @@ static int parse_options(int argc, char *argv[]) {
           fprintf(stderr, "error: can only select one repo option (use -h for help)\n");
           return(1);
         }
-        dblist = alpm_option_get_syncdbs();
+        dblist = alpm_list_copy(alpm_option_get_syncdbs());
         break;
       case 'Q':
         if (dblist) {
@@ -474,7 +474,7 @@ alpm_list_t *resolve_pkg(alpm_list_t *targets) {
 }
 
 int main(int argc, char *argv[]) {
-  int ret = 0, freelist = 0;
+  int ret = 0;
   alpm_list_t *results, *i;
 
   ret = alpm_init();
@@ -490,7 +490,6 @@ int main(int argc, char *argv[]) {
   /* default vals */
   if (!dblist) {
     dblist = alpm_list_add(dblist, db_local);
-    freelist = 1;
   }
   delim = delim ? delim : "\n";
   listdelim = listdelim ? listdelim : "  ";
@@ -514,11 +513,8 @@ int main(int argc, char *argv[]) {
 
   alpm_list_free(results);
 
-  if (freelist) {
-    alpm_list_free(dblist);
-  }
-
 finish:
+  alpm_list_free(dblist);
   alpm_list_free(targets);
   alpm_release();
   return(ret);
