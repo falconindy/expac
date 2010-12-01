@@ -238,8 +238,9 @@ static int parse_options(int argc, char *argv[]) {
   return(0);
 }
 
-static void print_escaped(const char *delim) {
+static int print_escaped(const char *delim) {
   const char *f;
+  int out = 0;
 
   for (f = delim; *f != '\0'; f++) {
     if (*f == '\\') {
@@ -271,21 +272,26 @@ static void print_escaped(const char *delim) {
         case 'v':
           putchar('\v');
           break;
+        ++out;
       }
     } else {
       putchar(*f);
+      ++out;
     }
   }
+
+  return(out);
 }
 
-static void print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
+static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
   alpm_list_t *i;
+  int out = 0;
 
   if (!list) {
     if (verbose) {
-      printf("None");
+      out += printf("None");
     }
-    return;
+    return(out);
   }
 
   i = list;
@@ -298,35 +304,39 @@ static void print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
       *(item + strcspn(item, "<>=")) = '\0';
     }
 
-    printf("%s", item);
+    out += printf("%s", item);
 
     if ((i = alpm_list_next(i))) {
-      print_escaped(listdelim);
+      out += print_escaped(listdelim);
     } else {
       break;
     }
   }
 
-  return;
+  return(out);
 }
 
-static void print_time(time_t timestamp) {
+static int print_time(time_t timestamp) {
   char buffer[64];
+  int out = 0;
 
   if (!timestamp) {
     if (verbose) {
-      printf("None");
+      out += printf("None");
     }
-    return;
+    return(out);
   }
 
   /* no overflow here, strftime prints a max of 64 including null */
   strftime(&buffer[0], 64, timefmt, localtime(&timestamp));
-  printf("%s", buffer);
+  out += printf("%s", buffer);
+
+  return(out);
 }
 
 static int print_pkg(pmpkg_t *pkg, const char *format) {
   const char *f;
+  int out = 0;
 
   for (f = format; *f != '\0'; f++) {
     bool shortdeps = false;
@@ -334,90 +344,91 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
       switch (*++f) {
         /* simple attributes */
         case 'f': /* filename */
-          printf("%s", alpm_pkg_get_filename(pkg));
+          out += printf("%s", alpm_pkg_get_filename(pkg));
           break;
         case 'n': /* package name */
-          printf("%s", alpm_pkg_get_name(pkg));
+          out += printf("%s", alpm_pkg_get_name(pkg));
           break;
         case 'v': /* version */
-          printf("%s", alpm_pkg_get_version(pkg));
+          out += printf("%s", alpm_pkg_get_version(pkg));
           break;
         case 'd': /* description */
-          printf("%s", alpm_pkg_get_desc(pkg));
+          out += printf("%s", alpm_pkg_get_desc(pkg));
           break;
         case 'u': /* project url */
-          printf("%s", alpm_pkg_get_url(pkg));
+          out += printf("%s", alpm_pkg_get_url(pkg));
           break;
         case 'p': /* packager name */
-          printf("%s", alpm_pkg_get_packager(pkg));
+          out += printf("%s", alpm_pkg_get_packager(pkg));
           break;
         case 's': /* md5sum */
-          printf("%s", alpm_pkg_get_md5sum(pkg));
+          out += printf("%s", alpm_pkg_get_md5sum(pkg));
           break;
         case 'a': /* architecutre */
-          printf("%s", alpm_pkg_get_arch(pkg));
+          out += printf("%s", alpm_pkg_get_arch(pkg));
           break;
         case 'i': /* has install scriptlet? */
-          printf("%s", alpm_pkg_has_scriptlet(pkg) ? "yes" : "no");
+          out += printf("%s", alpm_pkg_has_scriptlet(pkg) ? "yes" : "no");
           break;
         case 'r': /* repo */
-          printf("%s", alpm_db_get_name(alpm_pkg_get_db(pkg)));
+          out += printf("%s", alpm_db_get_name(alpm_pkg_get_db(pkg)));
           break;
 
         /* times */
         case 'b': /* build date */
-          print_time(alpm_pkg_get_builddate(pkg));
+          out += print_time(alpm_pkg_get_builddate(pkg));
           break;
         case 'l': /* install date */
-          print_time(alpm_pkg_get_installdate(pkg));
+          out += print_time(alpm_pkg_get_installdate(pkg));
           break;
 
         /* sizes */
         case 'k': /* download size */
-          printf("%.2f K", (float)alpm_pkg_get_size(pkg) / 1024.0);
+          out += printf("%.2f K", (float)alpm_pkg_get_size(pkg) / 1024.0);
           break;
         case 'm': /* install size */
-          printf("%.2f K", (float)alpm_pkg_get_isize(pkg) / 1024.0);
+          out += printf("%.2f K", (float)alpm_pkg_get_isize(pkg) / 1024.0);
           break;
 
         /* lists */
         case 'N': /* requiredby */
-          print_list(alpm_pkg_compute_requiredby(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_compute_requiredby(pkg), NULL, shortdeps);
           break;
         case 'L': /* licenses */
-          print_list(alpm_pkg_get_licenses(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_licenses(pkg), NULL, shortdeps);
           break;
         case 'G': /* groups */
-          print_list(alpm_pkg_get_groups(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_groups(pkg), NULL, shortdeps);
           break;
         case 'E': /* depends (shortdeps) */
-          print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name, shortdeps);
+          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name, shortdeps);
           break;
         case 'D': /* depends */
-          print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string, shortdeps);
+          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string, shortdeps);
           break;
         case 'O': /* optdepends */
-          print_list(alpm_pkg_get_optdepends(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_optdepends(pkg), NULL, shortdeps);
           break;
         case 'C': /* conflicts */
-          print_list(alpm_pkg_get_conflicts(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_conflicts(pkg), NULL, shortdeps);
           break;
         case 'S': /* provides (shortdeps) */
           shortdeps = true;
         case 'P': /* provides */
-          print_list(alpm_pkg_get_provides(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_provides(pkg), NULL, shortdeps);
           break;
         case 'R': /* replaces */
-          print_list(alpm_pkg_get_replaces(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_replaces(pkg), NULL, shortdeps);
           break;
         case 'F': /* files */
-          print_list(alpm_pkg_get_files(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_files(pkg), NULL, shortdeps);
           break;
         case 'B': /* backup */
-          print_list(alpm_pkg_get_backup(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_backup(pkg), NULL, shortdeps);
           break;
         case '%':
           putchar('%');
+          out++;
           break;
       }
     } else if (*f == '\\') {
@@ -425,13 +436,17 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
       buf[0] = *f;
       buf[1] = *++f;
       buf[2] = '\0';
-      print_escaped(buf);
+      out += print_escaped(buf);
     } else {
       putchar(*f);
+      out++;
     }
   }
 
-  print_escaped(delim);
+  /* only print a delimeter if any package data was outputted */
+  if (out > 0) {
+    print_escaped(delim);
+  }
 
   return(0);
 }
