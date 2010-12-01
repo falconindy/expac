@@ -496,7 +496,7 @@ alpm_list_t *resolve_pkg(alpm_list_t *targets) {
     }
   } else {
     for (t = targets; t; t = alpm_list_next(t)) {
-      pkgname = alpm_list_getdata(t);
+      pkgname = reponame = alpm_list_getdata(t);
       if (strchr(pkgname, '/')) {
         strsep(&pkgname, "/");
       } else {
@@ -504,19 +504,21 @@ alpm_list_t *resolve_pkg(alpm_list_t *targets) {
       }
 
       for (r = dblist; r; r = alpm_list_next(r)) {
+        pmdb_t *repo;
         pmpkg_t *pkg;
 
-        pkg = alpm_db_get_pkg(alpm_list_getdata(r), pkgname);
+        repo = alpm_list_getdata(r);
+        if (reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
+          continue;
+        }
 
+        pkg = alpm_db_get_pkg(repo, pkgname);
 #ifdef _HAVE_ALPM_FIND_SATISFIER
         if (!pkg) {
-          pkg = alpm_find_satisfier(alpm_db_get_pkgcache(alpm_list_getdata(r)), pkgname);
+          pkg = alpm_find_satisfier(alpm_db_get_pkgcache(repo), pkgname);
         }
 #endif
 
-        if (reponame && strcmp(reponame, alpm_db_get_name(alpm_list_getdata(r))) != 0) {
-          continue;
-        }
         if (!pkg) {
           if (verbose) {
             fprintf(stderr, "error: package `%s' not found\n", pkgname);
