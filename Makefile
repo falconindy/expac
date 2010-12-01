@@ -20,6 +20,7 @@ expac.1: README.pod
 
 install: expac
 	install -D -m755 expac ${DESTDIR}${PREFIX}/bin/expac
+	install -D -m644 expac.1 ${DESTDIR}${MANPREFIX}/man1/expac.1
 
 dist: clean
 	mkdir expac-${VERSION}
