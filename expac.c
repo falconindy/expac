@@ -42,8 +42,9 @@
 #define FORMAT_TOKENS_SYNC   "f"
 #define ESCAPE_TOKENS        "\"\\abefnrtv"
 
-alpm_list_t *dblist = NULL, *targets = NULL;
-pmdb_t *db_local;
+pmdb_t *db_local = NULL;
+alpm_list_t *dblist = NULL;
+alpm_list_t *targets = NULL;
 bool verbose = false;
 bool search = false;
 bool local = false;
