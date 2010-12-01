@@ -7,9 +7,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <assert.h>
 
-#define FORMAT_TOKENS "BCDEFGLNOPRSabdfiklmnoprsuv%"
+#define FORMAT_TOKENS "BCDEFGLNOPRSabdfiklmnprsuv%"
 #define ESCAPE_TOKENS "\"\\abefnrtv"
 
 alpm_list_t *dblist = NULL, *targets = NULL;
@@ -133,8 +132,8 @@ static void usage(void) {
   fprintf(stderr,
       " Options:\n"
       "  -Q, --local               search local DB (default)\n"
-      "  -S, --sync                search sync DBs\n\n"
-      "  -s, --search              search for matching strings\n"
+      "  -S, --sync                search sync DBs\n"
+      "  -s, --search              search for matching strings\n\n"
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
       "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n\n"
@@ -301,7 +300,6 @@ static void print_time(time_t timestamp) {
 
 static int print_pkg(pmpkg_t *pkg, const char *format) {
   const char *f;
-  assert(pkg);
 
   for (f = format; *f != '\0'; f++) {
     bool shortdeps = false;

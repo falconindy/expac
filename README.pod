@@ -105,8 +105,6 @@ The format argument allows the following interpreted sequences:
 
   %n    package name
 
-  %o    (reserved)
-
   %p    packager name
 
   %r    repo
