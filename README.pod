@@ -1,0 +1,127 @@
+=head1 NAME
+
+expac - package data extraction utility
+
+=head1 SYNOPSIS
+
+Usage: I<expac> [options] E<lt>formatE<gt> targets...
+
+=head1 DESCRIPTION
+
+expac is a data extraction tool for alpm databases. It features printf-like
+flexibility and aims to be used as a simple tool for other pacman based
+utilities which don't link against the library. It uses pacman.conf as a config
+file for locating and loading your local and sync databases.
+
+Targets are provided on the command line, and can be specified by simple name,
+or in repo/pkg format if the --sync option is used.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-S, --sync>
+
+Search the sync databases for provided targets.
+
+=item B<-Q, --query>
+
+Search the local database for provided targets. This is the default behavior.
+
+=item B<-s, --search>
+
+Search for packages matching the strings specified by targets. This is a
+boolean AND query and regex is allowed.
+
+=item B<-d, --delim> <string>
+
+Separate each package with the specified I<string>. The default value is a
+newline character.
+
+=item B<-l, --listdelim> <string>
+
+Separate each list item with the specified I<string>. Lists are any interpreted
+sequence specified with a capital letter. The default value is two spaces.
+
+=item B<-t, --timefmt> <format>
+
+Output time described by the specified I<format>. This string is passed directly
+to strftime(3). The default format is %c.
+
+=item B<-v, --verbose>
+
+Output more. `Package not found' errors will be shown, and empty field values
+will display as 'None'.
+
+=item B<-h, --help>
+
+Display the help message and quit.
+
+=back
+
+=head1 FORMATTING
+
+The format argument allows the following interpreted sequences:
+
+  %B    backup files
+
+  %C    conflicts with
+
+  %D    depends on
+
+  %E    depends on (no version strings)
+
+  %F    files (only with -Q)
+
+  %G    groups
+
+  %L    licenses
+
+  %N    required by
+
+  %O    optional deps
+
+  %P    provides
+
+  %R    replaces
+
+  %S    provides (no version strings)
+
+  %a    architecture
+
+  %b    build date
+
+  %d    description
+
+  %f    filename (only with -S)
+
+  %i    has install scriptlet
+
+  %k    download size
+
+  %l    install date (only with -Q)
+
+  %m    install size
+
+  %n    package name
+
+  %o    (reserved)
+
+  %p    packager name
+
+  %r    repo
+
+  %s    md5sum
+
+  %u    project URL
+
+  %v    version
+
+  %%    literal %
+
+Standard backslash escape sequences are supported. See printf(1).
+
+=head1 AUTHOR
+
+Dave Reisner E<lt>d@falconindy.comE<gt>
+
