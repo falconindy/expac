@@ -34,13 +34,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FORMAT_TOKENS "BCDEFGLNOPRSabdfiklmnprsuvw%"
-#define ESCAPE_TOKENS "\"\\abefnrtv"
+#define FORMAT_TOKENS        "BCDEGLNOPRSabdkmnprsuvw%"
+#define FORMAT_TOKENS_LOCAL  "ilFw"
+#define FORMAT_TOKENS_SYNC   "f"
+#define ESCAPE_TOKENS        "\"\\abefnrtv"
 
 alpm_list_t *dblist = NULL, *targets = NULL;
 pmdb_t *db_local;
 bool verbose = false;
 bool search = false;
+bool local = false;
 const char *format = NULL;
 const char *timefmt = NULL;
 const char *listdelim = NULL;
@@ -197,6 +200,7 @@ static int parse_options(int argc, char *argv[]) {
           return(1);
         }
         dblist = alpm_list_add(dblist, db_local);
+        local = true;
         break;
       case 'd':
         delim = optarg;
@@ -458,9 +462,21 @@ int verify_format_string(const char *format) {
   const char *p;
 
   for (p = format; *p != '\0'; p++) {
-    if (*p == '%' && !strchr(FORMAT_TOKENS, *++p)) {
-      fprintf(stderr, "error: bad token in format string: %%%c\n", *p);
-      return(1);
+    if (*p == '%') {
+      ++p;
+      if (!strchr(FORMAT_TOKENS FORMAT_TOKENS_LOCAL FORMAT_TOKENS_SYNC, *p)) {
+        fprintf(stderr, "error: bad token in format string: %%%c\n", *p);
+        return(1);
+      }
+
+      /* check for querytype dependent tokens */
+      if (!local && strchr(FORMAT_TOKENS_LOCAL, *p)) {
+        fprintf(stderr, "error: token not available with local queries: %%%c\n", *p);
+        return(1);
+      } else if (local && strchr(FORMAT_TOKENS_SYNC, *p)) {
+        fprintf(stderr, "error: token not available with sync queries: %%%c\n", *p);
+        return(1);
+      }
     } else if (*p == '\\' && !strchr(ESCAPE_TOKENS, *++p)) {
       fprintf(stderr, "error: bad token in format string: \\%c\n", *p);
       return(1);
@@ -532,6 +548,7 @@ int main(int argc, char *argv[]) {
 
   /* ensure sane defaults */
   if (!dblist) {
+    local = true;
     dblist = alpm_list_add(dblist, db_local);
   }
   delim = delim ? delim : "\n";
