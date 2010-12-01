@@ -1,6 +1,6 @@
 =head1 NAME
 
-expac - package data extraction utility
+expac - alpm data extraction utility
 
 =head1 SYNOPSIS
 
