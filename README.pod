@@ -119,7 +119,11 @@ The format argument allows the following interpreted sequences:
 
   %%    literal %
 
-Standard backslash escape sequences are supported. See printf(1).
+Note that for any lowercase tokens aside from %m and %k, full printf support is
+allowed, e.g. %-20n. This does not apply to any list based, date, or numerical
+output.
+
+Standard backslash escape sequences are supported, as per printf(1).
 
 =head1 AUTHOR
 

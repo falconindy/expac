@@ -42,6 +42,9 @@
 #define FORMAT_TOKENS_SYNC   "f"
 #define ESCAPE_TOKENS        "\"\\abefnrtv"
 
+static char const digits[] = "0123456789";
+static char const printf_flags[] = "'-+ #0I";
+
 pmdb_t *db_local = NULL;
 alpm_list_t *dblist = NULL;
 alpm_list_t *targets = NULL;
@@ -344,45 +347,52 @@ static int print_time(time_t timestamp) {
 
 static int print_pkg(pmpkg_t *pkg, const char *format) {
   const char *f;
-  int out = 0;
+  char fmt[32];
+  int len, out = 0;
 
   for (f = format; *f != '\0'; f++) {
     bool shortdeps = false;
+    len = 0;
     if (*f == '%') {
-      switch (*++f) {
+      len = strspn(f + 1 + len, printf_flags);
+      len += strspn(f + 1 + len, digits);
+      snprintf(fmt, len + 3, "%ss", f);
+      fmt[len + 1] = 's';
+      f += len + 1;
+      switch (*f) {
         /* simple attributes */
         case 'f': /* filename */
-          out += printf("%s", alpm_pkg_get_filename(pkg));
+          out += printf(fmt, alpm_pkg_get_filename(pkg));
           break;
         case 'n': /* package name */
-          out += printf("%s", alpm_pkg_get_name(pkg));
+          out += printf(fmt, alpm_pkg_get_name(pkg));
           break;
         case 'v': /* version */
-          out += printf("%s", alpm_pkg_get_version(pkg));
+          out += printf(fmt, alpm_pkg_get_version(pkg));
           break;
         case 'd': /* description */
-          out += printf("%s", alpm_pkg_get_desc(pkg));
+          out += printf(fmt, alpm_pkg_get_desc(pkg));
           break;
         case 'u': /* project url */
-          out += printf("%s", alpm_pkg_get_url(pkg));
+          out += printf(fmt, alpm_pkg_get_url(pkg));
           break;
         case 'p': /* packager name */
-          out += printf("%s", alpm_pkg_get_packager(pkg));
+          out += printf(fmt, alpm_pkg_get_packager(pkg));
           break;
         case 's': /* md5sum */
-          out += printf("%s", alpm_pkg_get_md5sum(pkg));
+          out += printf(fmt, alpm_pkg_get_md5sum(pkg));
           break;
         case 'a': /* architecutre */
-          out += printf("%s", alpm_pkg_get_arch(pkg));
+          out += printf(fmt, alpm_pkg_get_arch(pkg));
           break;
         case 'i': /* has install scriptlet? */
-          out += printf("%s", alpm_pkg_has_scriptlet(pkg) ? "yes" : "no");
+          out += printf(fmt, alpm_pkg_has_scriptlet(pkg) ? "yes" : "no");
           break;
         case 'r': /* repo */
-          out += printf("%s", alpm_db_get_name(alpm_pkg_get_db(pkg)));
+          out += printf(fmt, alpm_db_get_name(alpm_pkg_get_db(pkg)));
           break;
         case 'w': /* install reason */
-          out += printf("%s", alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
+          out += printf(fmt, alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
           break;
 
         /* times */
@@ -457,34 +467,6 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
   /* only print a delimeter if any package data was outputted */
   if (out > 0) {
     print_escaped(delim);
-  }
-
-  return(0);
-}
-
-int verify_format_string(const char *format) {
-  const char *p;
-
-  for (p = format; *p != '\0'; p++) {
-    if (*p == '%') {
-      ++p;
-      if (!strchr(FORMAT_TOKENS FORMAT_TOKENS_LOCAL FORMAT_TOKENS_SYNC, *p)) {
-        fprintf(stderr, "error: bad token in format string: %%%c\n", *p);
-        return(1);
-      }
-
-      /* check for querytype dependent tokens */
-      if (!local && strchr(FORMAT_TOKENS_LOCAL, *p)) {
-        fprintf(stderr, "error: token not available with local queries: %%%c\n", *p);
-        return(1);
-      } else if (local && strchr(FORMAT_TOKENS_SYNC, *p)) {
-        fprintf(stderr, "error: token not available with sync queries: %%%c\n", *p);
-        return(1);
-      }
-    } else if (*p == '\\' && !strchr(ESCAPE_TOKENS, *++p)) {
-      fprintf(stderr, "error: bad token in format string: \\%c\n", *p);
-      return(1);
-    }
   }
 
   return(0);
@@ -568,10 +550,6 @@ int main(int argc, char *argv[]) {
   delim = delim ? delim : DEFAULT_DELIM;
   listdelim = listdelim ? listdelim : DEFAULT_LISTDELIM;
   timefmt = timefmt ? timefmt : DEFAULT_TIMEFMT;
-
-  if (verify_format_string(format) != 0) {
-    return(1);
-  }
 
   results = resolve_pkg(targets);
   if (!results) {
