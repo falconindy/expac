@@ -346,6 +346,7 @@ static int print_time(time_t timestamp) {
 }
 
 static int print_pkg(pmpkg_t *pkg, const char *format) {
+  alpm_list_t *list = NULL;
   const char *f;
   char fmt[32];
   int len, out = 0;
@@ -413,45 +414,57 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
 
         /* lists */
         case 'N': /* requiredby */
-          out += print_list(alpm_pkg_compute_requiredby(pkg), NULL, shortdeps);
+          list = alpm_pkg_compute_requiredby(pkg);
+          out += print_list(list, NULL, shortdeps);
           break;
         case 'L': /* licenses */
-          out += print_list(alpm_pkg_get_licenses(pkg), NULL, shortdeps);
+          list = alpm_pkg_get_licenses(pkg);
+          out += print_list(list, NULL, shortdeps);
           break;
         case 'G': /* groups */
-          out += print_list(alpm_pkg_get_groups(pkg), NULL, shortdeps);
+          list = alpm_pkg_get_groups(pkg);
+          out += print_list(list, NULL, shortdeps);
           break;
         case 'E': /* depends (shortdeps) */
-          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name, shortdeps);
+          list = alpm_pkg_get_depends(pkg);
+          out += print_list(list, (extractfn)alpm_dep_get_name, shortdeps);
           break;
         case 'D': /* depends */
-          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string, shortdeps);
+          list = alpm_pkg_get_depends(pkg);
+          out += print_list(list, (extractfn)alpm_dep_compute_string, shortdeps);
           break;
         case 'O': /* optdepends */
-          out += print_list(alpm_pkg_get_optdepends(pkg), NULL, shortdeps);
+          list = alpm_pkg_get_optdepends(pkg);
+          out += print_list(list, NULL, shortdeps);
           break;
         case 'C': /* conflicts */
-          out += print_list(alpm_pkg_get_conflicts(pkg), NULL, shortdeps);
+          list = alpm_pkg_get_conflicts(pkg);
+          out += print_list(list, NULL, shortdeps);
           break;
         case 'S': /* provides (shortdeps) */
           shortdeps = true;
         case 'P': /* provides */
-          out += print_list(alpm_pkg_get_provides(pkg), NULL, shortdeps);
+          list = alpm_pkg_get_provides(pkg);
+          out += print_list(list, NULL, shortdeps);
           break;
         case 'R': /* replaces */
-          out += print_list(alpm_pkg_get_replaces(pkg), NULL, shortdeps);
+          list = alpm_pkg_get_replaces(pkg);
+          out += print_list(list, NULL, shortdeps);
           break;
         case 'F': /* files */
-          out += print_list(alpm_pkg_get_files(pkg), NULL, shortdeps);
+          list = alpm_pkg_get_files(pkg);
+          out += print_list(list, NULL, shortdeps);
           break;
         case 'B': /* backup */
-          out += print_list(alpm_pkg_get_backup(pkg), NULL, shortdeps);
+          list = alpm_pkg_get_backup(pkg);
+          out += print_list(list, NULL, shortdeps);
           break;
         case '%':
           putchar('%');
           out++;
           break;
       }
+      FREELIST(list);
     } else if (*f == '\\') {
       char buf[3]; /* its not safe to do this in a single sprintf */
       buf[0] = *f;
