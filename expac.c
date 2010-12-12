@@ -463,6 +463,10 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
           putchar('%');
           out++;
           break;
+        default:
+          putchar('?');
+          out++;
+          break;
       }
       FREELIST(list);
     } else if (*f == '\\') {
