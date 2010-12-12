@@ -37,9 +37,9 @@
 #define DEFAULT_DELIM        "\n"
 #define DEFAULT_LISTDELIM    "  "
 #define DEFAULT_TIMEFMT      "%c"
-#define FORMAT_TOKENS        "BCDEGLNOPRSabdkmnprsuvw%"
+#define FORMAT_TOKENS        "BCDEGLNOPRSabdmnprsuvw%"
 #define FORMAT_TOKENS_LOCAL  "ilFw"
-#define FORMAT_TOKENS_SYNC   "f"
+#define FORMAT_TOKENS_SYNC   "fk"
 #define ESCAPE_TOKENS        "\"\\abefnrtv"
 
 static char const digits[] = "0123456789";

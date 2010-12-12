@@ -97,7 +97,7 @@ The format argument allows the following interpreted sequences:
 
   %i    has install scriptlet (only with -Q)
 
-  %k    download size
+  %k    download size (only with -S)
 
   %l    install date (only with -Q)
 
