@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 Dave Reisner
+/* Copyright (c) 2010-2011 Dave Reisner
  *
  * expac.c
  *
