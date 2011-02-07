@@ -492,7 +492,11 @@ alpm_list_t *resolve_pkg(alpm_list_t *targets) {
     } else { /* dump full DBs */
       for (r = dblist; r; r = alpm_list_next(r)) {
         /* joining causes corruption on alpm_release(), so we copy */
+#ifdef _HAVE_ALPM_DB_GET_PKGCACHE_LIST
+        ret = alpm_list_join(ret, alpm_list_copy(alpm_db_get_pkgcache_list(alpm_list_getdata(r))));
+#else
         ret = alpm_list_join(ret, alpm_list_copy(alpm_db_get_pkgcache(alpm_list_getdata(r))));
+#endif
       }
     }
   } else {
@@ -514,10 +518,10 @@ alpm_list_t *resolve_pkg(alpm_list_t *targets) {
         }
 
         pkg = alpm_db_get_pkg(repo, pkgname);
-#ifdef _HAVE_ALPM_FIND_SATISFIER
+#if defined(_HAVE_ALPM_FIND_SATISFIER) && defined(_HAVE_ALPM_DB_GET_PKGCACHE_LIST)
         /* try to resolve as provide (e.g. awk => gawk) */
         if (!pkg) {
-          pkg = alpm_find_satisfier(alpm_db_get_pkgcache(repo), pkgname);
+          pkg = alpm_find_satisfier(alpm_db_get_pkgcache_list(repo), pkgname);
         }
 #endif
 
