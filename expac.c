@@ -484,16 +484,14 @@ alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   char *pkgname, *reponame;
   alpm_list_t *t, *r, *ret = NULL;
 
-  if (search) {
-    if (targets) {
-      for (r = dblist; r; r = alpm_list_next(r)) {
-        ret = alpm_list_join(ret, alpm_db_search(alpm_list_getdata(r), targets));
-      }
-    } else { /* dump full DBs */
-      for (r = dblist; r; r = alpm_list_next(r)) {
-        /* joining causes corruption on alpm_release(), so we copy */
-        ret = alpm_list_join(ret, alpm_list_copy(alpm_db_get_pkgcache(alpm_list_getdata(r))));
-      }
+  if (!targets) {
+    for (r = dblist; r; r = alpm_list_next(r)) {
+      /* joining causes corruption on alpm_release(), so we copy */
+      ret = alpm_list_join(ret, alpm_list_copy(alpm_db_get_pkgcache(alpm_list_getdata(r))));
+    }
+  } else if (search) {
+    for (r = dblist; r; r = alpm_list_next(r)) {
+      ret = alpm_list_join(ret, alpm_db_search(alpm_list_getdata(r), targets));
     }
   } else {
     for (t = targets; t; t = alpm_list_next(t)) {
