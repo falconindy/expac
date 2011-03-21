@@ -62,7 +62,7 @@ static char *strtrim(char *str) {
   char *pch = str;
 
   if (!str || *str == '\0') {
-    return(str);
+    return str;
   }
 
   while (isspace((unsigned char)*pch)) {
@@ -73,7 +73,7 @@ static char *strtrim(char *str) {
   }
 
   if (*str == '\0') {
-    return(str);
+    return str;
   }
 
   pch = (str + (strlen(str) - 1));
@@ -82,7 +82,7 @@ static char *strtrim(char *str) {
   }
   *++pch = '\0';
 
-  return(str);
+  return str;
 }
 
 static int alpm_init() {
@@ -93,17 +93,17 @@ static int alpm_init() {
 
   ret = alpm_initialize();
   if (ret != 0) {
-    return(ret);
+    return ret;
   }
 
   ret = alpm_option_set_root("/");
   if (ret != 0) {
-    return(ret);
+    return ret;
   }
 
   ret = alpm_option_set_dbpath("/var/lib/pacman");
   if (ret != 0) {
-    return(ret);
+    return ret;
   }
 
 #ifdef _HAVE_ALPM_DB_REGISTER_LOCAL
@@ -112,12 +112,12 @@ static int alpm_init() {
   db_local = alpm_option_get_localdb();
 #endif
   if (!db_local) {
-    return(1);
+    return 1;
   }
 
   fp = fopen("/etc/pacman.conf", "r");
   if (!fp) {
-    return(1);
+    return 1;
   }
 
   while (fgets(line, PATH_MAX, fp)) {
@@ -161,7 +161,7 @@ static int alpm_init() {
 finish:
   free(section);
   fclose(fp);
-  return(ret);
+  return ret;
 }
 
 static void usage(void) {
@@ -199,14 +199,14 @@ static int parse_options(int argc, char *argv[]) {
       case 'S':
         if (dblist) {
           fprintf(stderr, "error: can only select one repo option (use -h for help)\n");
-          return(1);
+          return 1;
         }
         dblist = alpm_list_copy(alpm_option_get_syncdbs());
         break;
       case 'Q':
         if (dblist) {
           fprintf(stderr, "error: can only select one repo option (use -h for help)\n");
-          return(1);
+          return 1;
         }
         dblist = alpm_list_add(dblist, db_local);
         local = true;
@@ -219,7 +219,7 @@ static int parse_options(int argc, char *argv[]) {
         break;
       case 'h':
         usage();
-        return(1);
+        return 1;
       case 's':
         search = true;
         break;
@@ -231,9 +231,9 @@ static int parse_options(int argc, char *argv[]) {
         break;
 
       case '?':
-        return(1);
+        return 1;
       default:
-        return(1);
+        return 1;
     }
   }
 
@@ -241,14 +241,14 @@ static int parse_options(int argc, char *argv[]) {
     format = argv[optind++];
   } else {
     fprintf(stderr, "error: missing format string (use -h for help)\n");
-    return(1);
+    return 1;
   }
 
   while (optind < argc) {
     targets = alpm_list_add(targets, argv[optind++]);
   }
 
-  return(0);
+  return 0;
 }
 
 static int print_escaped(const char *delim) {
@@ -293,7 +293,7 @@ static int print_escaped(const char *delim) {
     }
   }
 
-  return(out);
+  return out;
 }
 
 static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
@@ -304,7 +304,7 @@ static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
     if (verbose) {
       out += printf("None");
     }
-    return(out);
+    return out;
   }
 
   i = list;
@@ -326,7 +326,7 @@ static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
     }
   }
 
-  return(out);
+  return out;
 }
 
 static int print_time(time_t timestamp) {
@@ -337,14 +337,14 @@ static int print_time(time_t timestamp) {
     if (verbose) {
       out += printf("None");
     }
-    return(out);
+    return out;
   }
 
   /* no overflow here, strftime prints a max of 64 including null */
   strftime(&buffer[0], 64, timefmt, localtime(&timestamp));
   out += printf("%s", buffer);
 
-  return(out);
+  return out;
 }
 
 static int print_pkg(pmpkg_t *pkg, const char *format) {
@@ -475,7 +475,7 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
     print_escaped(delim);
   }
 
-  return(0);
+  return 0;
 }
 
 alpm_list_t *resolve_pkg(alpm_list_t *targets) {
@@ -529,7 +529,7 @@ alpm_list_t *resolve_pkg(alpm_list_t *targets) {
     }
   }
 
-  return(ret);
+  return ret;
 }
 
 int main(int argc, char *argv[]) {
@@ -538,7 +538,7 @@ int main(int argc, char *argv[]) {
 
   ret = alpm_init();
   if (ret != 0) {
-    return(ret);
+    return ret;
   }
 
   ret = parse_options(argc, argv);
@@ -573,6 +573,6 @@ finish:
   alpm_list_free(dblist);
   alpm_list_free(targets);
   alpm_release();
-  return(ret);
+  return ret;
 }
 
