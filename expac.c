@@ -85,7 +85,7 @@ static char *strtrim(char *str) {
   return str;
 }
 
-static int alpm_init() {
+static int alpm_init(void) {
   int ret = 0;
   FILE *fp;
   char line[PATH_MAX];
