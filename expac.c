@@ -478,7 +478,7 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
   return 0;
 }
 
-alpm_list_t *resolve_pkg(alpm_list_t *targets) {
+static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   char *pkgname, *reponame;
   alpm_list_t *t, *r, *ret = NULL;
 
