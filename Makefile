@@ -30,5 +30,5 @@ dist: clean
 	rm -rf expac-${VERSION}
 
 clean:
-	$(RM) ${OBJ} expac expac.1
+	${RM} ${OBJ} expac expac.1
 
