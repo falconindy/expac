@@ -152,9 +152,7 @@ static int alpm_init() {
       strsep(&ptr, "=");
       strtrim(key);
       strtrim(ptr);
-      if (strcmp(key, "RootDir") == 0) {
-        alpm_option_set_root(ptr);
-      } else if (strcmp(key, "DBPath") == 0) {
+      if (strcmp(key, "DBPath") == 0) {
         alpm_option_set_dbpath(ptr);
       }
     }
