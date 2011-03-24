@@ -344,11 +344,13 @@ static int print_time(time_t timestamp) {
 }
 
 static int print_pkg(pmpkg_t *pkg, const char *format) {
-  const char *f;
+  const char *f, *end;
   char fmt[32];
   int len, out = 0;
 
-  for (f = format; *f != '\0'; f++) {
+  end = rawmemchr(format, '\0');
+
+  for (f = format; f < end; f++) {
     bool shortdeps = false;
     len = 0;
     if (*f == '%') {
