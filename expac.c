@@ -106,11 +106,7 @@ static int alpm_init(void) {
     return ret;
   }
 
-#ifdef _HAVE_ALPM_DB_REGISTER_LOCAL
-  db_local = alpm_db_register_local();
-#else
   db_local = alpm_option_get_localdb();
-#endif
   if (!db_local) {
     return 1;
   }
@@ -510,12 +506,10 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
         }
 
         pkg = alpm_db_get_pkg(repo, pkgname);
-#ifdef _HAVE_ALPM_FIND_SATISFIER
         /* try to resolve as provide (e.g. awk => gawk) */
         if (!pkg) {
           pkg = alpm_find_satisfier(alpm_db_get_pkgcache(repo), pkgname);
         }
-#endif
 
         if (!pkg) {
           if (verbose) {
