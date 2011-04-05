@@ -33,6 +33,10 @@ Search the local database for provided targets. This is the default behavior.
 Search for packages matching the strings specified by targets. This is a
 boolean AND query and regex is allowed.
 
+=item B<-g, --group>
+
+Return packages matching the specified targets as package groups.
+
 =item B<-d, --delim> <string>
 
 Separate each package with the specified I<string>. The default value is a

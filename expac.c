@@ -51,6 +51,7 @@ alpm_list_t *targets = NULL;
 bool verbose = false;
 bool search = false;
 bool local = false;
+bool groups = false;
 const char *format = NULL;
 const char *timefmt = NULL;
 const char *listdelim = NULL;
@@ -167,7 +168,8 @@ static void usage(void) {
       " Options:\n"
       "  -Q, --local               search local DB (default)\n"
       "  -S, --sync                search sync DBs\n"
-      "  -s, --search              search for matching strings\n\n"
+      "  -s, --search              search for matching regex\n\n"
+      "  -g, --group               return packages matching targets as groups\n"
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
       "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n\n"
@@ -181,6 +183,7 @@ static int parse_options(int argc, char *argv[]) {
   static struct option opts[] = {
     {"delim",     required_argument,  0, 'd'},
     {"listdelim", required_argument,  0, 'l'},
+    {"group",     required_argument,  0, 'g'},
     {"help",      no_argument,        0, 'h'},
     {"local",     no_argument,        0, 'Q'},
     {"sync",      no_argument,        0, 'S'},
@@ -190,7 +193,7 @@ static int parse_options(int argc, char *argv[]) {
     {0, 0, 0, 0}
   };
 
-  while (-1 != (opt = getopt_long(argc, argv, "l:d:hf:QSst:v", opts, &option_index))) {
+  while (-1 != (opt = getopt_long(argc, argv, "l:d:ghf:QSst:v", opts, &option_index))) {
     switch (opt) {
       case 'S':
         if (dblist) {
@@ -209,6 +212,9 @@ static int parse_options(int argc, char *argv[]) {
         break;
       case 'd':
         delim = optarg;
+        break;
+      case 'g':
+        groups = true;
         break;
       case 'l':
         listdelim = optarg;
@@ -488,6 +494,15 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   } else if (search) {
     for (r = dblist; r; r = alpm_list_next(r)) {
       ret = alpm_list_join(ret, alpm_db_search(alpm_list_getdata(r), targets));
+    }
+  } else if (groups) {
+    for (t = targets; t; t = alpm_list_next(t)) {
+      for (r = dblist; r; r = alpm_list_next(r)) {
+        pmgrp_t *grp = alpm_db_readgrp(alpm_list_getdata(r), alpm_list_getdata(t));
+        if (grp) {
+          ret = alpm_list_join(ret, alpm_list_copy(alpm_grp_get_pkgs(grp)));
+        }
+      }
     }
   } else {
     for (t = targets; t; t = alpm_list_next(t)) {
