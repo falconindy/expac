@@ -6,7 +6,7 @@ PREFIX ?= /usr/local
 MANPREFIX ?= ${PREFIX}/share/man
 
 # compiler flags
-CC ?= c99
+CC       ?= gcc
 CPPFLAGS += -DVERSION=\"${VERSION}\"
-CFLAGS += -std=c99 -g -pedantic -Wall -Wextra ${CPPFLAGS}
-LDFLAGS += -lalpm
+CFLAGS   += -std=c99 -g -pedantic -Wall -Wextra -Werror ${CPPFLAGS}
+LDFLAGS  += -lalpm

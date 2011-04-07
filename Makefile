@@ -3,6 +3,8 @@ include config.mk
 SRC = expac.c
 OBJ = ${SRC:.c=.o}
 
+DISTFILES = expac.c README.pod Makefile config.mk
+
 all: expac doc
 
 .c.o:
@@ -21,7 +23,7 @@ install: expac
 
 dist: clean
 	mkdir expac-${VERSION}
-	cp Makefile expac.1 expac.c expac-${VERSION}
+	cp ${DISTFILES} expac-${VERSION}
 	sed "s/^VERSION = .*/VERSION = ${VERSION}/" config.mk > expac-${VERSION}/config.mk
 	tar cf - expac-${VERSION} | gzip -9 > expac-${VERSION}.tar.gz
 	rm -rf expac-${VERSION}
@@ -29,3 +31,4 @@ dist: clean
 clean:
 	${RM} ${OBJ} expac expac.1
 
+.PHONY: all clean dist doc install doc
