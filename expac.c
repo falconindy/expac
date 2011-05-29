@@ -543,7 +543,7 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
 
         ret = alpm_list_add(ret, pkg);
         if (readone) {
-          return ret;
+          break;
         }
       }
     }
