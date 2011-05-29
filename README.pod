@@ -37,6 +37,11 @@ boolean AND query and regex is allowed.
 
 Return packages matching the specified targets as package groups.
 
+=item B<-1, --readone>
+
+Stop searching after the first result. This only has an effect on -S operations
+without -s.
+
 =item B<-d, --delim> <string>
 
 Separate each package with the specified I<string>. The default value is a

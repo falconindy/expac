@@ -48,6 +48,7 @@ static char const printf_flags[] = "'-+ #0I";
 pmdb_t *db_local = NULL;
 alpm_list_t *dblist = NULL;
 alpm_list_t *targets = NULL;
+bool readone = false;
 bool verbose = false;
 bool search = false;
 bool local = false;
@@ -169,7 +170,8 @@ static void usage(void) {
       "  -Q, --local               search local DB (default)\n"
       "  -S, --sync                search sync DBs\n"
       "  -s, --search              search for matching regex\n"
-      "  -g, --group               return packages matching targets as groups\n\n"
+      "  -g, --group               return packages matching targets as groups\n"
+      "  -1, --readone             return only the first result of a sync search\n\n"
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
       "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n\n"
@@ -181,6 +183,7 @@ static int parse_options(int argc, char *argv[]) {
   int opt, option_index = 0;
 
   static struct option opts[] = {
+    {"readone",   no_argument,        0, '1'},
     {"delim",     required_argument,  0, 'd'},
     {"listdelim", required_argument,  0, 'l'},
     {"group",     required_argument,  0, 'g'},
@@ -193,7 +196,7 @@ static int parse_options(int argc, char *argv[]) {
     {0, 0, 0, 0}
   };
 
-  while (-1 != (opt = getopt_long(argc, argv, "l:d:ghf:QSst:v", opts, &option_index))) {
+  while (-1 != (opt = getopt_long(argc, argv, "1l:d:ghf:QSst:v", opts, &option_index))) {
     switch (opt) {
       case 'S':
         if (dblist) {
@@ -209,6 +212,9 @@ static int parse_options(int argc, char *argv[]) {
         }
         dblist = alpm_list_add(dblist, db_local);
         local = true;
+        break;
+      case '1':
+        readone = true;
         break;
       case 'd':
         delim = optarg;
@@ -536,6 +542,9 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
         }
 
         ret = alpm_list_add(ret, pkg);
+        if (readone) {
+          return ret;
+        }
       }
     }
   }
