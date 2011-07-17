@@ -126,6 +126,8 @@ The format argument allows the following interpreted sequences:
 
   %w    install reason
 
+  %!    result number (auto-incremented counter, starts at 0)
+
   %%    literal %
 
 Note that for any lowercase tokens aside from %m and %k, full printf support is

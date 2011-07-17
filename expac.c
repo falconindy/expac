@@ -57,6 +57,7 @@ const char *format = NULL;
 const char *timefmt = NULL;
 const char *listdelim = NULL;
 const char *delim = NULL;
+int pkgcounter = 0;
 
 typedef const char *(*extractfn)(void*);
 
@@ -405,6 +406,9 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
           break;
         case 'w': /* install reason */
           out += printf(fmt, alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
+          break;
+        case '!': /* result number */
+          out += printf("%d", pkgcounter++);
           break;
 
         /* times */
