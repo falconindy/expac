@@ -485,7 +485,7 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
     print_escaped(delim);
   }
 
-  return 0;
+  return !out;
 }
 
 static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
