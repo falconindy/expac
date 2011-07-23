@@ -517,6 +517,7 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   } else {
     for (t = targets; t; t = alpm_list_next(t)) {
       pmpkg_t *pkg = NULL;
+      int found = 0;
 
       pkgname = reponame = alpm_list_getdata(t);
       if (strchr(pkgname, '/')) {
@@ -537,12 +538,13 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
           continue;
         }
 
+        found = 1;
         ret = alpm_list_add(ret, pkg);
         if (readone) {
           break;
         }
       }
-      if (!pkg && verbose) {
+      if (!found && verbose) {
         fprintf(stderr, "error: package `%s' not found\n", pkgname);
       }
     }
