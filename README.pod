@@ -90,6 +90,8 @@ The format argument allows the following interpreted sequences:
 
   %O    optional deps
 
+  %o    optional deps (no descriptions)
+
   %P    provides
 
   %R    replaces

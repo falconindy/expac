@@ -88,6 +88,17 @@ static char *strtrim(char *str) {
   return str;
 }
 
+char *trim_optdep(char *optdep) {
+  char *colon;
+
+  colon = strchr(optdep, ':');
+  if (colon) {
+    *colon = '\0';
+  }
+
+  return optdep;
+}
+
 static int alpm_init(void) {
   int ret = 0;
   FILE *fp;
@@ -445,6 +456,9 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
           break;
         case 'O': /* optdepends */
           out += print_list(alpm_pkg_get_optdepends(pkg), NULL, shortdeps);
+          break;
+        case 'o': /* optdepends (shortdeps) */
+          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)trim_optdep, shortdeps);
           break;
         case 'C': /* conflicts */
           out += print_list(alpm_pkg_get_conflicts(pkg), NULL, shortdeps);
