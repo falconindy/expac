@@ -88,7 +88,7 @@ static char *strtrim(char *str) {
   return str;
 }
 
-char *trim_optdep(char *optdep) {
+static char *trim_optdep(char *optdep) {
   char *colon;
 
   colon = strchr(optdep, ':');
