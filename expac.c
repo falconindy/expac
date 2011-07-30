@@ -355,6 +355,18 @@ static int print_time(time_t timestamp) {
   return out;
 }
 
+static int print_filelist(alpm_filelist_t *filelist) {
+  int out = 0;
+  size_t i;
+
+  for (i = 0; i < filelist->count; i++) {
+    out += printf("%s", (filelist->files + i)->name);
+    out += print_escaped(listdelim);
+  }
+
+  return out;
+}
+
 static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   const char *f, *end;
   char fmt[32];
@@ -427,6 +439,9 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           break;
 
         /* lists */
+        case 'F': /* files */
+          out += print_filelist(alpm_pkg_get_files(pkg));
+          break;
         case 'N': /* requiredby */
           out += print_list(alpm_pkg_compute_requiredby(pkg), NULL, shortdeps);
           break;
@@ -458,9 +473,6 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           break;
         case 'R': /* replaces */
           out += print_list(alpm_pkg_get_replaces(pkg), NULL, shortdeps);
-          break;
-        case 'F': /* files */
-          out += print_list(alpm_pkg_get_files(pkg), NULL, shortdeps);
           break;
         case 'B': /* backup */
           out += print_list(alpm_pkg_get_backup(pkg), NULL, shortdeps);
