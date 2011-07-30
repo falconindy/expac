@@ -305,6 +305,9 @@ static int print_escaped(const char *delim) {
         case 'v':
           putchar('\v');
           break;
+        case '0':
+          putchar('\0');
+          break;
         ++out;
       }
     } else {
