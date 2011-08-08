@@ -28,7 +28,7 @@
 #include <alpm.h>
 #include <ctype.h>
 #include <getopt.h>
-#include <limits.h>
+/* #include <limits.h> */
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +41,10 @@
 #define FORMAT_TOKENS_LOCAL  "ilFw"
 #define FORMAT_TOKENS_SYNC   "fk"
 #define ESCAPE_TOKENS        "\"\\abefnrtv"
+
+#ifndef PATH_MAX
+#define PATH_MAX  4096
+#endif
 
 static char const digits[] = "0123456789";
 static char const printf_flags[] = "'-+ #0I";
@@ -435,10 +439,10 @@ static int print_pkg(pmpkg_t *pkg, const char *format) {
 
         /* sizes */
         case 'k': /* download size */
-          out += printf("%.2f K", (float)alpm_pkg_get_size(pkg) / 1024.0);
+          out += printf("%.2f KiB", (float)alpm_pkg_get_size(pkg) / 1024.0);
           break;
         case 'm': /* install size */
-          out += printf("%.2f K", (float)alpm_pkg_get_isize(pkg) / 1024.0);
+          out += printf("%.2f KiB", (float)alpm_pkg_get_isize(pkg) / 1024.0);
           break;
 
         /* lists */
