@@ -39,7 +39,7 @@
 #define DEFAULT_TIMEFMT      "%c"
 #define FORMAT_TOKENS        "BCDEGLNOPRSabdmnprsuvw%"
 #define FORMAT_TOKENS_LOCAL  "ilFw"
-#define FORMAT_TOKENS_SYNC   "fk"
+#define FORMAT_TOKENS_SYNC   "fgk"
 #define ESCAPE_TOKENS        "\"\\abefnrtv"
 
 #ifndef PATH_MAX
@@ -420,6 +420,9 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           break;
         case '!': /* result number */
           out += printf("%d", pkgcounter++);
+          break;
+        case 'g': /* base64 gpg sig */
+          out += printf(fmt, alpm_pkg_get_base64_sig(pkg));
           break;
 
         /* times */

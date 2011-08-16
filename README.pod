@@ -106,6 +106,8 @@ The format argument allows the following interpreted sequences:
 
   %f    filename (only with -S)
 
+  %g    base64 encoded PGP signature (only with -S)
+
   %i    has install scriptlet (only with -Q)
 
   %k    download size (only with -S)
