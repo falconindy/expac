@@ -369,7 +369,7 @@ static int print_filelist(alpm_filelist_t *filelist) {
 
 static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   const char *f, *end;
-  char fmt[32];
+  char fmt[32], buf[32];
   int len, out = 0;
 
   end = rawmemchr(format, '\0');
@@ -419,7 +419,8 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += printf(fmt, alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
           break;
         case '!': /* result number */
-          out += printf("%d", pkgcounter++);
+          snprintf(buf, 32, "%d", pkgcounter++);
+          out += printf(fmt, buf);
           break;
         case 'g': /* base64 gpg sig */
           out += printf(fmt, alpm_pkg_get_base64_sig(pkg));
