@@ -320,7 +320,7 @@ static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
   while (1) {
     char *item;
 
-    item = (char*)(fn ? fn(alpm_list_getdata(i)) : alpm_list_getdata(i));
+    item = (char*)(fn ? fn(i->data) : i->data);
 
     if (shortdeps) {
       *(item + strcspn(item, "<>=")) = '\0';
@@ -521,16 +521,16 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   if (!targets) {
     for (r = dblist; r; r = alpm_list_next(r)) {
       /* joining causes corruption on alpm_release(), so we copy */
-      ret = alpm_list_join(ret, alpm_list_copy(alpm_db_get_pkgcache(alpm_list_getdata(r))));
+      ret = alpm_list_join(ret, alpm_list_copy(alpm_db_get_pkgcache(r->data)));
     }
   } else if (search) {
     for (r = dblist; r; r = alpm_list_next(r)) {
-      ret = alpm_list_join(ret, alpm_db_search(alpm_list_getdata(r), targets));
+      ret = alpm_list_join(ret, alpm_db_search(r->data, targets));
     }
   } else if (groups) {
     for (t = targets; t; t = alpm_list_next(t)) {
       for (r = dblist; r; r = alpm_list_next(r)) {
-        alpm_group_t *grp = alpm_db_readgroup(alpm_list_getdata(r), alpm_list_getdata(t));
+        alpm_group_t *grp = alpm_db_readgroup(r->data, t->data);
         if (grp) {
           ret = alpm_list_join(ret, alpm_list_copy(grp->packages));
         }
@@ -541,7 +541,7 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
       alpm_pkg_t *pkg = NULL;
       int found = 0;
 
-      pkgname = reponame = alpm_list_getdata(t);
+      pkgname = reponame = t->data;
       if (strchr(pkgname, '/')) {
         strsep(&pkgname, "/");
       } else {
@@ -549,7 +549,7 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
       }
 
       for (r = dblist; r; r = alpm_list_next(r)) {
-        alpm_db_t *repo = alpm_list_getdata(r);
+        alpm_db_t *repo = r->data;
 
         if (reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
           continue;
@@ -606,7 +606,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (i = results; i; i = alpm_list_next(i)) {
-    alpm_pkg_t *pkg = alpm_list_getdata(i);
+    alpm_pkg_t *pkg = i->data;
     ret += print_pkg(pkg, format);
   }
   ret = !!ret; /* clamp to zero/one */
