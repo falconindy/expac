@@ -14,7 +14,7 @@ LDFLAGS  += -lalpm
 SRC = expac.c
 OBJ = ${SRC:.c=.o}
 
-DISTFILES = expac.c README.pod Makefile config.mk
+DISTFILES = expac.c README.pod
 
 all: expac doc
 
@@ -35,7 +35,7 @@ install: expac
 dist: clean
 	mkdir expac-${VERSION}
 	cp ${DISTFILES} expac-${VERSION}
-	sed "s/^VERSION = .*/VERSION = ${VERSION}/" config.mk > expac-${VERSION}/config.mk
+	sed "s/^VERSION = .*/VERSION = ${VERSION}/" Makefile > expac-${VERSION}/Makefile
 	tar cf - expac-${VERSION} | gzip -9 > expac-${VERSION}.tar.gz
 	rm -rf expac-${VERSION}
 
