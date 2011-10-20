@@ -52,6 +52,11 @@ newline character.
 Separate each list item with the specified I<string>. Lists are any interpreted
 sequence specified with a capital letter. The default value is two spaces.
 
+=item B<-p, --file>
+
+Interpret targets as paths to local files. This option only makes sense with the
+-Q option.
+
 =item B<-t, --timefmt> <format>
 
 Output time described by the specified I<format>. This string is passed directly

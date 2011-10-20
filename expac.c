@@ -58,6 +58,7 @@ bool verbose = false;
 bool search = false;
 bool local = false;
 bool groups = false;
+bool localpkg = false;
 const char *format = NULL;
 const char *timefmt = NULL;
 const char *listdelim = NULL;
@@ -172,6 +173,7 @@ static void usage(void) {
       "  -1, --readone             return only the first result of a sync search\n\n"
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
+      "  -p, --file                query local files instead of the DB\n"
       "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n\n"
       "  -v, --verbose             be more verbose\n\n"
       "  -h, --help                display this help and exit\n\n");
@@ -186,6 +188,7 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
     {"listdelim", required_argument,  0, 'l'},
     {"group",     required_argument,  0, 'g'},
     {"help",      no_argument,        0, 'h'},
+    {"file",      no_argument,        0, 'p'},
     {"local",     no_argument,        0, 'Q'},
     {"sync",      no_argument,        0, 'S'},
     {"search",    no_argument,        0, 's'},
@@ -194,7 +197,7 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
     {0, 0, 0, 0}
   };
 
-  while (-1 != (opt = getopt_long(argc, argv, "1l:d:ghf:QSst:v", opts, &option_index))) {
+  while (-1 != (opt = getopt_long(argc, argv, "1l:d:ghf:pQSst:v", opts, &option_index))) {
     switch (opt) {
       case 'S':
         if (dblist) {
@@ -226,6 +229,9 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
       case 'h':
         usage();
         return 1;
+      case 'p':
+        localpkg = true;
+        break;
       case 's':
         search = true;
         break;
@@ -578,7 +584,7 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
 int main(int argc, char *argv[]) {
   int ret = 1;
   alpm_handle_t *handle;
-  alpm_list_t *results, *i;
+  alpm_list_t *results = NULL, *i;
 
   handle = alpm_init();
   if (!handle) {
@@ -592,17 +598,37 @@ int main(int argc, char *argv[]) {
 
   /* ensure sane defaults */
   if (!dblist) {
-    local = true;
-    dblist = alpm_list_add(dblist, db_local);
+    if (localpkg) {
+      /* load each target as a package */
+      for (i = targets; i; i = alpm_list_next(i)) {
+        alpm_pkg_t *pkg;
+        int err;
+
+        err = alpm_pkg_load(handle, i->data, 0,
+            ALPM_SIG_PACKAGE|ALPM_SIG_PACKAGE_OPTIONAL, &pkg);
+        if (err) {
+          fprintf(stderr, "error: %s: %s\n", (const char*)i->data,
+              alpm_strerror(alpm_errno(handle)));
+          continue;
+        }
+        results = alpm_list_add(results, pkg);
+      }
+    } else {
+      local = true;
+      dblist = alpm_list_add(dblist, db_local);
+    }
   }
+
   delim = delim ? delim : DEFAULT_DELIM;
   listdelim = listdelim ? listdelim : DEFAULT_LISTDELIM;
   timefmt = timefmt ? timefmt : DEFAULT_TIMEFMT;
 
-  results = resolve_pkg(targets);
-  if (!results) {
-    ret = 1;
-    goto finish;
+  if (!localpkg) {
+    results = resolve_pkg(targets);
+    if (!results) {
+      ret = 1;
+      goto finish;
+    }
   }
 
   for (i = results; i; i = alpm_list_next(i)) {
