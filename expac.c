@@ -637,6 +637,9 @@ int main(int argc, char *argv[]) {
   }
   ret = !!ret; /* clamp to zero/one */
 
+  if(localpkg) {
+    alpm_list_free_inner(results, (alpm_list_fn_free)alpm_pkg_free);
+  }
   alpm_list_free(results);
 
 finish:
