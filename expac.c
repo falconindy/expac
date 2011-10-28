@@ -189,7 +189,7 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
     {"group",     required_argument,  0, 'g'},
     {"help",      no_argument,        0, 'h'},
     {"file",      no_argument,        0, 'p'},
-    {"local",     no_argument,        0, 'Q'},
+    {"query",     no_argument,        0, 'Q'},
     {"sync",      no_argument,        0, 'S'},
     {"search",    no_argument,        0, 's'},
     {"timefmt",   required_argument,  0, 't'},
