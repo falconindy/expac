@@ -597,33 +597,31 @@ int main(int argc, char *argv[]) {
   }
 
   /* ensure sane defaults */
-  if (!dblist) {
-    if (localpkg) {
-      /* load each target as a package */
-      for (i = targets; i; i = alpm_list_next(i)) {
-        alpm_pkg_t *pkg;
-        int err;
-
-        err = alpm_pkg_load(handle, i->data, 0,
-            ALPM_SIG_PACKAGE|ALPM_SIG_PACKAGE_OPTIONAL, &pkg);
-        if (err) {
-          fprintf(stderr, "error: %s: %s\n", (const char*)i->data,
-              alpm_strerror(alpm_errno(handle)));
-          continue;
-        }
-        results = alpm_list_add(results, pkg);
-      }
-    } else {
-      local = true;
-      dblist = alpm_list_add(dblist, db_local);
-    }
+  if (!dblist && !localpkg) {
+    local = true;
+    dblist = alpm_list_add(dblist, db_local);
   }
 
   delim = delim ? delim : DEFAULT_DELIM;
   listdelim = listdelim ? listdelim : DEFAULT_LISTDELIM;
   timefmt = timefmt ? timefmt : DEFAULT_TIMEFMT;
 
-  if (!localpkg) {
+  if (localpkg) {
+    /* load each target as a package */
+    for (i = targets; i; i = alpm_list_next(i)) {
+      alpm_pkg_t *pkg;
+      int err;
+
+      err = alpm_pkg_load(handle, i->data, 0,
+          ALPM_SIG_PACKAGE|ALPM_SIG_PACKAGE_OPTIONAL, &pkg);
+      if (err) {
+        fprintf(stderr, "error: %s: %s\n", (const char*)i->data,
+            alpm_strerror(alpm_errno(handle)));
+        continue;
+      }
+      results = alpm_list_add(results, pkg);
+    }
+  } else {
     results = resolve_pkg(targets);
     if (!results) {
       ret = 1;

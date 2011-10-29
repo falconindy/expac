@@ -54,8 +54,7 @@ sequence specified with a capital letter. The default value is two spaces.
 
 =item B<-p, --file>
 
-Interpret targets as paths to local files. This option only makes sense with the
--Q option.
+Interpret targets as paths to local files.
 
 =item B<-t, --timefmt> <format>
 
