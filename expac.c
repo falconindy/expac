@@ -42,6 +42,7 @@
 #define FORMAT_TOKENS_LOCAL  "ilFw"
 #define FORMAT_TOKENS_SYNC   "fgk"
 #define ESCAPE_TOKENS        "\"\\abefnrtv"
+#define SIZE_TOKENS          "BKMGTPEZY\0"
 
 #ifndef PATH_MAX
 #define PATH_MAX  4096
@@ -59,6 +60,7 @@ bool search = false;
 bool local = false;
 bool groups = false;
 bool localpkg = false;
+char humansize = 'B';
 const char *format = NULL;
 const char *timefmt = NULL;
 const char *listdelim = NULL;
@@ -66,6 +68,44 @@ const char *delim = NULL;
 int pkgcounter = 0;
 
 typedef const char *(*extractfn)(void*);
+
+static double humanize_size(off_t bytes, const char target_unit, const char **label)
+{
+	static const char *labels[] = {"B", "KiB", "MiB", "GiB",
+		"TiB", "PiB", "EiB", "ZiB", "YiB"};
+	static const int unitcount = sizeof(labels) / sizeof(labels[0]);
+
+	double val = (double)bytes;
+	int index;
+
+	for(index = 0; index < unitcount - 1; index++) {
+		if(target_unit != '\0' && labels[index][0] == target_unit) {
+			break;
+		} else if(target_unit == '\0' && val <= 2048.0 && val >= -2048.0) {
+			break;
+		}
+		val /= 1024.0;
+	}
+
+	if(label) {
+		*label = labels[index];
+	}
+
+	return val;
+}
+
+static char *size_to_string(off_t pkgsize)
+{
+	static char out[64];
+
+	if(humansize == 'B') {
+		snprintf(out, sizeof(out), "%jd", (intmax_t)pkgsize);
+	} else {
+		snprintf(out, sizeof(out), "%.2f %ciB", humanize_size(pkgsize, humansize, NULL), humansize);
+	}
+
+	return out;
+}
 
 static char *strtrim(char *str) {
   char *pch = str;
@@ -170,6 +210,7 @@ static void usage(void) {
       "  -S, --sync                search sync DBs\n"
       "  -s, --search              search for matching regex\n"
       "  -g, --group               return packages matching targets as groups\n"
+      "  -H, --humansize <size>    format package sizes in SI units (default: bytes)\n"
       "  -1, --readone             return only the first result of a sync search\n\n"
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
@@ -181,6 +222,7 @@ static void usage(void) {
 
 static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
   int opt, option_index = 0;
+  const char *i;
 
   static struct option opts[] = {
     {"readone",   no_argument,        0, '1'},
@@ -189,6 +231,7 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
     {"group",     required_argument,  0, 'g'},
     {"help",      no_argument,        0, 'h'},
     {"file",      no_argument,        0, 'p'},
+    {"humansize", required_argument,  0, 'H'},
     {"query",     no_argument,        0, 'Q'},
     {"sync",      no_argument,        0, 'S'},
     {"search",    no_argument,        0, 's'},
@@ -197,7 +240,7 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
     {0, 0, 0, 0}
   };
 
-  while (-1 != (opt = getopt_long(argc, argv, "1l:d:ghf:pQSst:v", opts, &option_index))) {
+  while (-1 != (opt = getopt_long(argc, argv, "1l:d:gH:hf:pQSst:v", opts, &option_index))) {
     switch (opt) {
       case 'S':
         if (dblist) {
@@ -225,6 +268,18 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
         break;
       case 'l':
         listdelim = optarg;
+        break;
+      case 'H':
+        for(i = SIZE_TOKENS; *i; i++) {
+          if(*i == *optarg) {
+            humansize = *optarg;
+            break;
+          }
+        }
+        if(*i == '\0') {
+          fprintf(stderr, "error: invalid SI size formatter: %c\n", *optarg);
+          return 1;
+        }
         break;
       case 'h':
         usage();
@@ -376,7 +431,7 @@ static int print_filelist(alpm_filelist_t *filelist) {
 
 static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   const char *f, *end;
-  char fmt[32], buf[32];
+  char fmt[64], buf[64];
   int len, out = 0;
 
   end = rawmemchr(format, '\0');
@@ -426,7 +481,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += printf(fmt, alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
           break;
         case '!': /* result number */
-          snprintf(buf, 32, "%d", pkgcounter++);
+          snprintf(buf, sizeof(buf), "%d", pkgcounter++);
           out += printf(fmt, buf);
           break;
         case 'g': /* base64 gpg sig */
@@ -446,10 +501,10 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
 
         /* sizes */
         case 'k': /* download size */
-          out += printf("%s", alpm_pkg_get_size(pkg));
+          out += printf(fmt, size_to_string(alpm_pkg_get_size(pkg)));
           break;
         case 'm': /* install size */
-          out += printf("%s", alpm_pkg_get_isize(pkg));
+          out += printf(fmt, size_to_string(alpm_pkg_get_isize(pkg)));
           break;
 
         /* lists */

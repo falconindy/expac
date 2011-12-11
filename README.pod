@@ -37,6 +37,12 @@ boolean AND query and regex is allowed.
 
 Return packages matching the specified targets as package groups.
 
+=item B<-H, --humansize> <size>
+
+Format package sizes in SI units according to I<size>. Valid options are:
+
+  B, K, M, G, T, P, E, Z, Y
+
 =item B<-1, --readone>
 
 Stop searching after the first result. This only has an effect on -S operations
