@@ -446,10 +446,10 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
 
         /* sizes */
         case 'k': /* download size */
-          out += printf("%.2f KiB", (float)alpm_pkg_get_size(pkg) / 1024.0);
+          out += printf("%s", alpm_pkg_get_size(pkg));
           break;
         case 'm': /* install size */
-          out += printf("%.2f KiB", (float)alpm_pkg_get_isize(pkg) / 1024.0);
+          out += printf("%s", alpm_pkg_get_isize(pkg));
           break;
 
         /* lists */
