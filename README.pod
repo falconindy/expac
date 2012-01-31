@@ -140,7 +140,7 @@ The format argument allows the following interpreted sequences:
 
   %v    version
 
-  %w    install reason
+  %w    install reason (only with -Q)
 
   %!    result number (auto-incremented counter, starts at 0)
 
