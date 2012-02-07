@@ -164,7 +164,7 @@ static alpm_handle_t *alpm_init(void) {
     return NULL;
   }
 
-  db_local = alpm_option_get_localdb(handle);
+  db_local = alpm_get_localdb(handle);
 
   fp = fopen("/etc/pacman.conf", "r");
   if (!fp) {
@@ -192,7 +192,7 @@ static alpm_handle_t *alpm_init(void) {
       section[strlen(section) - 1] = '\0';
 
       if (strcmp(section, "options") != 0) {
-        alpm_db_register_sync(handle, section,
+        alpm_register_syncdb(handle, section,
             ALPM_SIG_DATABASE | ALPM_SIG_DATABASE_OPTIONAL);
       }
     }
@@ -254,7 +254,7 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
           fprintf(stderr, "error: can only select one repo option (use -h for help)\n");
           return 1;
         }
-        dblist = alpm_list_copy(alpm_option_get_syncdbs(handle));
+        dblist = alpm_list_copy(alpm_get_syncdbs(handle));
         break;
       case 'Q':
         if (dblist) {
@@ -599,7 +599,7 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   } else if (groups) {
     for (t = targets; t; t = alpm_list_next(t)) {
       for (r = dblist; r; r = alpm_list_next(r)) {
-        alpm_group_t *grp = alpm_db_readgroup(r->data, t->data);
+        alpm_group_t *grp = alpm_db_get_group(r->data, t->data);
         if (grp) {
           ret = alpm_list_join(ret, alpm_list_copy(grp->packages));
         }
