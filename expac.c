@@ -538,7 +538,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
         case 'S': /* provides (shortdeps) */
           shortdeps = true;
         case 'P': /* provides */
-          out += print_list(alpm_pkg_get_provides(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_get_name, shortdeps);
           break;
         case 'R': /* replaces */
           out += print_list(alpm_pkg_get_replaces(pkg), NULL, shortdeps);
