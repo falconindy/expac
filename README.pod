@@ -13,20 +13,24 @@ flexibility and aims to be used as a simple tool for other pacman based
 utilities which don't link against the library. It uses pacman.conf as a config
 file for locating and loading your local and sync databases.
 
-Targets are provided on the command line, and can be specified by simple name,
-or in repo/pkg format if the --sync option is used.
+Invoking expac consists of supplying a format string, which is generally
+described by one to many of the formatting tokens (see the B<FORMATTING>
+section), any relevant options and zero to many targets. The format string
+B<must> be the first non-option argument. Targets can be a simple package name,
+a query string (in the case of a search), or in repo/package syntax when the
+-sync option is supplied.
 
 =head1 OPTIONS
 
 =over 4
 
-=item B<-S, --sync>
-
-Search the sync databases for provided targets.
-
 =item B<-Q, --query>
 
 Search the local database for provided targets. This is the default behavior.
+
+=item B<-S, --sync>
+
+Search the sync databases for provided targets.
 
 =item B<-s, --search>
 
@@ -151,6 +155,24 @@ allowed, e.g. %-20n. This does not apply to any list based, date, or numerical
 output.
 
 Standard backslash escape sequences are supported, as per printf(1).
+
+=head1 EXAMPLES
+
+Emulate pacman's search function:
+
+=over 4
+
+  $ expac -Ss '%r/%n %v\n    %d' <search terms>
+
+=back
+
+List the oldest 10 installed packages (by build date):
+
+=over 4
+
+  $ expac --timefmt=%s '%b\t%n' | sort -n | head -10
+
+=back
 
 =head1 AUTHOR
 

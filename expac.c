@@ -217,7 +217,8 @@ static void usage(void) {
       "  -p, --file                query local files instead of the DB\n"
       "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n\n"
       "  -v, --verbose             be more verbose\n\n"
-      "  -h, --help                display this help and exit\n\n");
+      "  -h, --help                display this help and exit\n\n"
+      "For more details see expac(1).\n");
 }
 
 static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
