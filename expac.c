@@ -69,6 +69,12 @@ int pkgcounter = 0;
 
 typedef const char *(*extractfn)(void*);
 
+static const char *alpm_backup_get_name(void *b)
+{
+	alpm_backup_t *bkup = b;
+	return bkup->name;
+}
+
 static double humanize_size(off_t bytes, const char target_unit, const char **label)
 {
 	static const char *labels[] = {"B", "KiB", "MiB", "GiB",
@@ -546,7 +552,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += print_list(alpm_pkg_get_replaces(pkg), NULL, shortdeps);
           break;
         case 'B': /* backup */
-          out += print_list(alpm_pkg_get_backup(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_backup(pkg), alpm_backup_get_name, shortdeps);
           break;
         case '%':
           putchar('%');
