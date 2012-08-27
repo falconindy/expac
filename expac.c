@@ -333,39 +333,39 @@ static int print_escaped(const char *delim) {
     if (*f == '\\') {
       switch (*++f) {
         case '\\':
-          putchar('\\');
+          fputc('\\', stdout);
           break;
         case '"':
-          putchar('\"');
+          fputc('\"', stdout);
           break;
         case 'a':
-          putchar('\a');
+          fputc('\a', stdout);
           break;
         case 'b':
-          putchar('\b');
+          fputc('\b', stdout);
           break;
         case 'e': /* \e is nonstandard */
-          putchar('\033');
+          fputc('\033', stdout);
           break;
         case 'n':
-          putchar('\n');
+          fputc('\n', stdout);
           break;
         case 'r':
-          putchar('\r');
+          fputc('\r', stdout);
           break;
         case 't':
-          putchar('\t');
+          fputc('\t', stdout);
           break;
         case 'v':
-          putchar('\v');
+          fputc('\v', stdout);
           break;
         case '0':
-          putchar('\0');
+          fputc('\0', stdout);
           break;
         ++out;
       }
     } else {
-      putchar(*f);
+      fputc(*f, stdout);
       ++out;
     }
   }
@@ -555,11 +555,11 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += print_list(alpm_pkg_get_backup(pkg), alpm_backup_get_name, shortdeps);
           break;
         case '%':
-          putchar('%');
+          fputc('%', stdout);
           out++;
           break;
         default:
-          putchar('?');
+          fputc('?', stdout);
           out++;
           break;
       }
@@ -570,7 +570,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
       buf[2] = '\0';
       out += print_escaped(buf);
     } else {
-      putchar(*f);
+      fputc(*f, stdout);
       out++;
     }
   }
