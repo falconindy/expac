@@ -3,43 +3,33 @@ VERSION = $(shell git describe --always)
 
 # paths
 PREFIX ?= /usr/local
-MANPREFIX ?= ${PREFIX}/share/man
+MANPREFIX ?= $(PREFIX)/share/man
 
 # compiler flags
-CC       ?= gcc
-CPPFLAGS += -DVERSION=\"${VERSION}\"
-CFLAGS   += -std=c99 -g -pedantic -Wall -Wextra -Werror ${CPPFLAGS}
-LDFLAGS  += -lalpm
-
-SRC = expac.c
-OBJ = ${SRC:.c=.o}
+CPPFLAGS := -DVERSION=\"$(VERSION)\" $(CPPFLAGS)
+CFLAGS   := -std=c99 -g -pedantic -Wall -Wextra -Werror $(CFLAGS)
+LDLIBS    = -lalpm
 
 DISTFILES = expac.c README.pod
 
 all: expac doc
 
-.c.o:
-	${CC} -c ${CFLAGS} $<
-
-expac: ${OBJ}
-	${CC} -o $@ ${OBJ} ${LDFLAGS}
-
 doc: expac.1
 expac.1: README.pod
-	pod2man --section=1 --center="expac manual" --name="EXPAC" --release="expac ${VERSION}" $< > $@
+	pod2man --section=1 --center="expac manual" --name="EXPAC" --release="expac $(VERSION)" $< $@
 
 install: expac
-	install -D -m755 expac ${DESTDIR}${PREFIX}/bin/expac
-	install -D -m644 expac.1 ${DESTDIR}${MANPREFIX}/man1/expac.1
+	install -D -m755 expac $(DESTDIR)$(PREFIX)/bin/expac
+	install -D -m644 expac.1 $(DESTDIR)$(MANPREFIX)/man1/expac.1
 
 dist: clean
-	mkdir expac-${VERSION}
-	cp ${DISTFILES} expac-${VERSION}
-	sed "s/^VERSION = .*/VERSION = ${VERSION}/" Makefile > expac-${VERSION}/Makefile
-	tar cf - expac-${VERSION} | gzip -9 > expac-${VERSION}.tar.gz
-	rm -rf expac-${VERSION}
+	mkdir expac-$(VERSION)
+	cp $(DISTFILES) expac-$(VERSION)
+	sed "s/^VERSION = .*/VERSION = $(VERSION)/" Makefile > expac-$(VERSION)/Makefile
+	tar cf - expac-$(VERSION) | gzip -9 > expac-$(VERSION).tar.gz
+	rm -rf expac-$(VERSION)
 
 clean:
-	${RM} ${OBJ} expac expac.1
+	$(RM) expac.o expac expac.1
 
 .PHONY: all clean dist doc install doc
