@@ -540,7 +540,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)trim_optdep, shortdeps);
           break;
         case 'C': /* conflicts */
-          out += print_list(alpm_pkg_get_conflicts(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_get_name, shortdeps);
           break;
         case 'S': /* provides (shortdeps) */
           out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_get_name, shortdeps);
@@ -549,7 +549,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_compute_string, shortdeps);
           break;
         case 'R': /* replaces */
-          out += print_list(alpm_pkg_get_replaces(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_get_name, shortdeps);
           break;
         case 'B': /* backup */
           out += print_list(alpm_pkg_get_backup(pkg), alpm_backup_get_name, shortdeps);
