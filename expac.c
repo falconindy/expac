@@ -71,46 +71,46 @@ typedef const char *(*extractfn)(void*);
 
 static const char *alpm_backup_get_name(void *b)
 {
-	alpm_backup_t *bkup = b;
-	return bkup->name;
+  alpm_backup_t *bkup = b;
+  return bkup->name;
 }
 
 static double humanize_size(off_t bytes, const char target_unit, const char **label)
 {
-	static const char *labels[] = {"B", "KiB", "MiB", "GiB",
-		"TiB", "PiB", "EiB", "ZiB", "YiB"};
-	static const int unitcount = sizeof(labels) / sizeof(labels[0]);
+  static const char *labels[] = {"B", "KiB", "MiB", "GiB",
+    "TiB", "PiB", "EiB", "ZiB", "YiB"};
+  static const int unitcount = sizeof(labels) / sizeof(labels[0]);
 
-	double val = (double)bytes;
-	int index;
+  double val = (double)bytes;
+  int index;
 
-	for(index = 0; index < unitcount - 1; index++) {
-		if(target_unit != '\0' && labels[index][0] == target_unit) {
-			break;
-		} else if(target_unit == '\0' && val <= 2048.0 && val >= -2048.0) {
-			break;
-		}
-		val /= 1024.0;
-	}
+  for(index = 0; index < unitcount - 1; index++) {
+    if(target_unit != '\0' && labels[index][0] == target_unit) {
+      break;
+    } else if(target_unit == '\0' && val <= 2048.0 && val >= -2048.0) {
+      break;
+    }
+    val /= 1024.0;
+  }
 
-	if(label) {
-		*label = labels[index];
-	}
+  if(label) {
+    *label = labels[index];
+  }
 
-	return val;
+  return val;
 }
 
 static char *size_to_string(off_t pkgsize)
 {
-	static char out[64];
+  static char out[64];
 
-	if(humansize == 'B') {
-		snprintf(out, sizeof(out), "%jd", (intmax_t)pkgsize);
-	} else {
-		snprintf(out, sizeof(out), "%.2f %ciB", humanize_size(pkgsize, humansize, NULL), humansize);
-	}
+  if(humansize == 'B') {
+    snprintf(out, sizeof(out), "%jd", (intmax_t)pkgsize);
+  } else {
+    snprintf(out, sizeof(out), "%.2f %ciB", humanize_size(pkgsize, humansize, NULL), humansize);
+  }
 
-	return out;
+  return out;
 }
 
 static char *strtrim(char *str) {
