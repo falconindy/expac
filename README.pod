@@ -132,6 +132,8 @@ The format argument allows the following interpreted sequences:
 
   %m    install size
 
+  %M    modified backup files (only with -Q)
+
   %n    package name
 
   %p    packager name

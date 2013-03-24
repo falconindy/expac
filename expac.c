@@ -38,7 +38,7 @@
 #define DEFAULT_DELIM        "\n"
 #define DEFAULT_LISTDELIM    "  "
 #define DEFAULT_TIMEFMT      "%c"
-#define FORMAT_TOKENS        "BCDEGLNOPRSabdhmnprsuvw%"
+#define FORMAT_TOKENS        "BCDEGLMNOPRSabdhmnprsuvw%"
 #define FORMAT_TOKENS_LOCAL  "ilFw"
 #define FORMAT_TOKENS_SYNC   "fgk"
 #define ESCAPE_TOKENS        "\"\\abefnrtv"
@@ -436,6 +436,42 @@ static int print_filelist(alpm_filelist_t *filelist) {
   return out;
 }
 
+static bool backup_file_is_modified(const alpm_backup_t *backup_file) {
+  char fullpath[PATH_MAX];
+  char *md5sum;
+  bool modified;
+
+  snprintf(fullpath, PATH_MAX, "/%s", backup_file->name);
+
+  if(access(fullpath, R_OK) != 0) {
+    return false;
+  }
+
+  md5sum = alpm_compute_md5sum(fullpath);
+  if(md5sum == NULL) {
+    return false;
+  }
+
+  modified = strcmp(md5sum, backup_file->hash) != 0;
+
+  free(md5sum);
+
+  return modified;
+}
+
+static alpm_list_t *get_modified_files(alpm_pkg_t *pkg) {
+  alpm_list_t *i, *modified_files = NULL;
+
+  for(i = alpm_pkg_get_backup(pkg); i; i = alpm_list_next(i)) {
+    const alpm_backup_t *backup = i->data;
+    if(backup->hash && backup_file_is_modified(backup)) {
+      modified_files = alpm_list_add(modified_files, backup->name);
+    }
+  }
+
+  return modified_files;
+}
+
 static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   const char *f, *end;
   char fmt[64], buf[64];
@@ -554,6 +590,15 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
         case 'B': /* backup */
           out += print_list(alpm_pkg_get_backup(pkg), alpm_backup_get_name, shortdeps);
           break;
+        case 'M': /* modified */
+        {
+          alpm_list_t *modified_files = get_modified_files(pkg);
+          if(modified_files != NULL) {
+            out += print_list(modified_files, NULL, shortdeps);
+            alpm_list_free(modified_files);
+          }
+          break;
+        }
         case '%':
           fputc('%', stdout);
           out++;
