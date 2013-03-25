@@ -39,9 +39,6 @@
 #define DEFAULT_LISTDELIM    "  "
 #define DEFAULT_TIMEFMT      "%c"
 #define FORMAT_TOKENS        "BCDEGLMNOPRSabdhmnprsuvw%"
-#define FORMAT_TOKENS_LOCAL  "ilFw"
-#define FORMAT_TOKENS_SYNC   "fgk"
-#define ESCAPE_TOKENS        "\"\\abefnrtv"
 #define SIZE_TOKENS          "BKMGTPEZY\0"
 
 #ifndef PATH_MAX
