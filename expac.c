@@ -145,17 +145,6 @@ static char *format_optdep(alpm_depend_t *optdep) {
   return out;
 }
 
-static char *trim_optdep(alpm_depend_t *optdep) {
-  char *colon;
-
-  colon = strchr(optdep->name, ':');
-  if (colon) {
-    *colon = '\0';
-  }
-
-  return optdep->name;
-}
-
 static alpm_handle_t *alpm_init(void) {
   alpm_handle_t *handle = NULL;
   enum _alpm_errno_t alpm_errno = 0;
@@ -578,7 +567,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)format_optdep, shortdeps);
           break;
         case 'o': /* optdepends (shortdeps) */
-          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)trim_optdep, shortdeps);
+          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)alpm_dep_get_name, shortdeps);
           break;
         case 'C': /* conflicts */
           out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_get_name, shortdeps);
