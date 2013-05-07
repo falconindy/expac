@@ -7,7 +7,7 @@ MANPREFIX ?= $(PREFIX)/share/man
 
 # compiler flags
 CPPFLAGS := -DVERSION=\"$(VERSION)\" $(CPPFLAGS)
-CFLAGS   := -std=c99 -g -pedantic -Wall -Wextra -Werror $(CFLAGS)
+CFLAGS   := -std=c99 -g -pedantic -Wall -Wextra $(CFLAGS)
 LDLIBS    = -lalpm
 
 DISTFILES = expac.c README.pod
