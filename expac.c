@@ -140,7 +140,9 @@ static char *strtrim(char *str) {
 static char *format_optdep(alpm_depend_t *optdep) {
   char *out;
 
-  asprintf(&out, "%s: %s", optdep->name, optdep->desc);
+  if (asprintf(&out, "%s: %s", optdep->name, optdep->desc) < 0) {
+    return NULL;
+  }
 
   return out;
 }
@@ -380,9 +382,10 @@ static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
 
   i = list;
   while (1) {
-    char *item;
-
-    item = (char*)(fn ? fn(i->data) : i->data);
+    char *item = (char*)(fn ? fn(i->data) : i->data);
+    if (item == NULL) {
+      continue;
+    }
 
     if (shortdeps) {
       *(item + strcspn(item, "<>=")) = '\0';
