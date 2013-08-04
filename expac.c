@@ -38,7 +38,7 @@
 #define DEFAULT_DELIM        "\n"
 #define DEFAULT_LISTDELIM    "  "
 #define DEFAULT_TIMEFMT      "%c"
-#define FORMAT_TOKENS        "BCDEGLMNOPRSabdhmnprsuvw%"
+#define FORMAT_TOKENS        "BCDEGLMNOPRSVabdhmnprsuvw%"
 #define SIZE_TOKENS          "BKMGTPEZY\0"
 
 #ifndef PATH_MAX
@@ -469,6 +469,31 @@ static alpm_list_t *get_modified_files(alpm_pkg_t *pkg) {
   return modified_files;
 }
 
+static alpm_list_t *get_validation_reason(alpm_pkg_t *pkg) {
+  alpm_list_t *validation = NULL;
+
+  alpm_pkgvalidation_t v = alpm_pkg_get_validation(pkg);
+  if(v) {
+    if(v & ALPM_PKG_VALIDATION_NONE) {
+      validation = alpm_list_add(validation, "None");
+    } else {
+      if(v & ALPM_PKG_VALIDATION_MD5SUM) {
+        validation = alpm_list_add(validation, "MD5 Sum");
+      }
+      if(v & ALPM_PKG_VALIDATION_SHA256SUM) {
+        validation = alpm_list_add(validation, "SHA256 Sum");
+      }
+      if(v & ALPM_PKG_VALIDATION_SIGNATURE) {
+        validation = alpm_list_add(validation, "Signature");
+      }
+    }
+  } else {
+    validation = alpm_list_add(validation, "Unknown");
+  }
+
+  return validation;
+}
+
 static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   const char *f, *end;
   char fmt[64], buf[64];
@@ -586,6 +611,9 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           break;
         case 'B': /* backup */
           out += print_list(alpm_pkg_get_backup(pkg), alpm_backup_get_name, shortdeps);
+          break;
+        case 'V': /* package validation */
+          out += print_list(get_validation_reason(pkg), NULL, shortdeps);
           break;
         case 'M': /* modified */
         {
