@@ -124,6 +124,8 @@ The format argument allows the following interpreted sequences:
 
   %h    sha256sum
 
+  %V    package validation method
+
   %i    has install scriptlet (only with -Q)
 
   %k    download size (only with -S)
