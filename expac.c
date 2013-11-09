@@ -41,6 +41,8 @@
 #define FORMAT_TOKENS        "BCDEGLMNOPRSVabdhmnprsuvw%"
 #define SIZE_TOKENS          "BKMGTPEZY\0"
 
+#define DEFAULT_SIGLEVEL      ALPM_SIG_DATABASE | ALPM_SIG_DATABASE_OPTIONAL
+
 #ifndef PATH_MAX
 #define PATH_MAX  4096
 #endif
@@ -153,6 +155,9 @@ static alpm_handle_t *alpm_init(void) {
   FILE *fp;
   char line[PATH_MAX];
   char *ptr, *section = NULL;
+  char *value;
+  int database = 0;
+  alpm_siglevel_t level = ALPM_SIG_USE_DEFAULT;
 
   handle = alpm_initialize("/", "/var/lib/pacman", &alpm_errno);
   if (!handle) {
@@ -188,8 +193,61 @@ static alpm_handle_t *alpm_init(void) {
       section[strlen(section) - 1] = '\0';
 
       if (strcmp(section, "options") != 0) {
-        alpm_register_syncdb(handle, section,
-            ALPM_SIG_DATABASE | ALPM_SIG_DATABASE_OPTIONAL);
+        /* The following code is inspired from pacman's conf.c and ini.c */
+        while (fgets(line, PATH_MAX, fp)) {
+          if(strncmp(line, "Server", strlen("Server")) == 0)
+            continue;
+          else if(strncmp(line, "Usage", strlen("Usage")) == 0)
+            continue;
+          else if(strncmp(line, "SigLevel", strlen("SigLevel")) == 0) {
+
+            /* trim string value to represent data after = and any whitespace  */
+            value = strchr(line, '=') + 1;
+            while(isspace((unsigned char)*value))
+              value++;
+            /* SigLevel processing is duplicate of process_siglevel
+             * handling of the SigLevel parameter. This code is only 
+             * slightly modified based on variable names.
+             * 
+             * Originally used src:
+             * https://projects.archlinux.org/pacman.git/tree/src/pacman/conf.c
+             *
+             * Package Specific code has been removed, consider Database only
+             *  */
+            if(strstr(value, "Never") != NULL) {
+              level &= ~ALPM_SIG_DATABASE;
+            } else if(strstr(value, "Optional") != NULL) {
+              level |= ALPM_SIG_DATABASE;
+              level |= ALPM_SIG_DATABASE_OPTIONAL;
+            } else if(strstr(value, "Required") != NULL) {
+              level |= ALPM_SIG_DATABASE;
+              level &= ~ALPM_SIG_DATABASE_OPTIONAL;
+            } else if(strstr(value, "TrustedOnly") != NULL) {
+              level &= ~ALPM_SIG_DATABASE_MARGINAL_OK;
+              level &= ~ALPM_SIG_DATABASE_UNKNOWN_OK;
+            } else if(strstr(value, "TrustAll") != NULL) {
+              level |= ALPM_SIG_DATABASE_MARGINAL_OK;
+              level |= ALPM_SIG_DATABASE_UNKNOWN_OK;
+            } else {
+              break;  //Invalid SigLevel Setting, ignore them
+            }
+            level &= ~ALPM_SIG_USE_DEFAULT;
+
+            /* End of code from 
+             * https://projects.archlinux.org/pacman.git/tree/src/pacman/conf.c
+             */
+          }
+          else { /* End of repo section */
+            /* If the Use Default flag remains set, setup expac-specific
+             * DEFAULTS since the complete CONF file is not processed in
+             * the same manner as PACMAN
+             */
+            if(level == ALPM_SIG_USE_DEFAULT)
+              level = DEFAULT_SIGLEVEL;
+            break;
+          }
+        }
+        alpm_register_syncdb(handle, section, level);
       }
     }
   }
@@ -724,7 +782,7 @@ int main(int argc, char *argv[]) {
   if (!handle) {
     return ret;
   }
-
+  
   ret = parse_options(argc, argv, handle);
   if (ret != 0) {
     goto finish;
