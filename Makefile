@@ -6,13 +6,15 @@ PREFIX ?= /usr/local
 MANPREFIX ?= $(PREFIX)/share/man
 
 # compiler flags
-CPPFLAGS := -DVERSION=\"$(VERSION)\" $(CPPFLAGS)
+CPPFLAGS := -DVERSION=\"$(VERSION)\" -D_GNU_SOURCE $(CPPFLAGS)
 CFLAGS   := -std=c99 -g -pedantic -Wall -Wextra $(CFLAGS)
 LDLIBS    = -lalpm
 
 DISTFILES = expac.c README.pod
 
 all: expac doc
+
+expac: repo.o expac.o
 
 doc: expac.1
 expac.1: README.pod

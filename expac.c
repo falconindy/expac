@@ -24,7 +24,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#define _GNU_SOURCE
 #include <alpm.h>
 #include <ctype.h>
 #include <getopt.h>
@@ -34,6 +33,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+#include "repo.h"
 
 #define DEFAULT_DELIM        "\n"
 #define DEFAULT_LISTDELIM    "  "
@@ -110,33 +111,6 @@ static char *size_to_string(off_t pkgsize)
   return out;
 }
 
-static char *strtrim(char *str) {
-  char *pch = str;
-
-  if (!str || *str == '\0') {
-    return str;
-  }
-
-  while (isspace((unsigned char)*pch)) {
-    pch++;
-  }
-  if (pch != str) {
-    memmove(str, pch, (strlen(pch) + 1));
-  }
-
-  if (*str == '\0') {
-    return str;
-  }
-
-  pch = (str + (strlen(str) - 1));
-  while (isspace((unsigned char)*pch)) {
-    pch--;
-  }
-  *++pch = '\0';
-
-  return str;
-}
-
 static char *format_optdep(alpm_depend_t *optdep) {
   char *out;
 
@@ -149,53 +123,36 @@ static char *format_optdep(alpm_depend_t *optdep) {
 
 static alpm_handle_t *alpm_init(void) {
   alpm_handle_t *handle = NULL;
-  enum _alpm_errno_t alpm_errno = 0;
-  FILE *fp;
-  char line[PATH_MAX];
-  char *ptr, *section = NULL;
+  enum _alpm_errno_t err = 0;
+  struct repo_t *r;
+  struct repovec_t *repos;
 
-  handle = alpm_initialize("/", "/var/lib/pacman", &alpm_errno);
+  handle = alpm_initialize("/", "/var/lib/pacman", &err);
   if (!handle) {
-    alpm_strerror(alpm_errno);
+    alpm_strerror(err);
     return NULL;
   }
 
   db_local = alpm_get_localdb(handle);
 
-  fp = fopen("/etc/pacman.conf", "r");
-  if (!fp) {
-    perror("fopen: /etc/pacman.conf");
-    return handle;
-  }
+  repos = load_repos_from_file("/etc/pacman.conf");
 
-  while (fgets(line, PATH_MAX, fp)) {
-    strtrim(line);
+  REPOVEC_FOREACH(r, repos) {
+    alpm_db_t *db;
 
-    if (strlen(line) == 0 || line[0] == '#') {
-      continue;
-    }
-    if ((ptr = strchr(line, '#'))) {
-      *ptr = '\0';
+    if (r->siglevel == ALPM_SIG_USE_DEFAULT) {
+      r->siglevel = repos->default_siglevel;
     }
 
-    if (line[0] == '[' && line[strlen(line) - 1] == ']') {
-      ptr = &line[1];
-      if (section) {
-        free(section);
-      }
-
-      section = strdup(ptr);
-      section[strlen(section) - 1] = '\0';
-
-      if (strcmp(section, "options") != 0) {
-        alpm_register_syncdb(handle, section,
-            ALPM_SIG_DATABASE | ALPM_SIG_DATABASE_OPTIONAL);
-      }
+    db = alpm_register_syncdb(handle, r->name, r->siglevel);
+    if (db == NULL || alpm_db_get_valid(db) < 0) {
+      fprintf(stderr, "Failed to register repo %s: %s\n",
+          r->name, alpm_strerror(alpm_errno(handle)));
     }
   }
 
-  free(section);
-  fclose(fp);
+  repos_free(repos);
+
   return handle;
 }
 
