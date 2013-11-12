@@ -188,8 +188,7 @@ static alpm_handle_t *alpm_init(void) {
       section[strlen(section) - 1] = '\0';
 
       if (strcmp(section, "options") != 0) {
-        alpm_register_syncdb(handle, section,
-            ALPM_SIG_DATABASE | ALPM_SIG_DATABASE_OPTIONAL);
+        alpm_register_syncdb(handle, section, 0);
       }
     }
   }
@@ -746,8 +745,7 @@ int main(int argc, char *argv[]) {
       alpm_pkg_t *pkg;
       int err;
 
-      err = alpm_pkg_load(handle, i->data, 0,
-          ALPM_SIG_PACKAGE|ALPM_SIG_PACKAGE_OPTIONAL, &pkg);
+      err = alpm_pkg_load(handle, i->data, 0, 0, &pkg);
       if (err) {
         fprintf(stderr, "error: %s: %s\n", (const char*)i->data,
             alpm_strerror(alpm_errno(handle)));
