@@ -48,6 +48,7 @@
 static char const digits[] = "0123456789";
 static char const printf_flags[] = "'-+ #0I";
 
+alpm_handle_t *handle = NULL;
 alpm_db_t *db_local = NULL;
 alpm_list_t *dblist = NULL;
 alpm_list_t *targets = NULL;
@@ -146,8 +147,7 @@ static char *format_optdep(alpm_depend_t *optdep) {
   return out;
 }
 
-static alpm_handle_t *alpm_init(void) {
-  alpm_handle_t *handle = NULL;
+static void alpm_init(void) {
   enum _alpm_errno_t alpm_errno = 0;
   FILE *fp;
   char line[PATH_MAX];
@@ -156,7 +156,7 @@ static alpm_handle_t *alpm_init(void) {
   handle = alpm_initialize("/", "/var/lib/pacman", &alpm_errno);
   if (!handle) {
     alpm_strerror(alpm_errno);
-    return NULL;
+    return;
   }
 
   db_local = alpm_get_localdb(handle);
@@ -164,7 +164,7 @@ static alpm_handle_t *alpm_init(void) {
   fp = fopen("/etc/pacman.conf", "r");
   if (!fp) {
     perror("fopen: /etc/pacman.conf");
-    return handle;
+    return;
   }
 
   while (fgets(line, PATH_MAX, fp)) {
@@ -194,7 +194,7 @@ static alpm_handle_t *alpm_init(void) {
 
   free(section);
   fclose(fp);
-  return handle;
+  return;
 }
 
 static const char *alpm_dep_get_name(void *dep) {
@@ -221,7 +221,7 @@ static void usage(void) {
       "For more details see expac(1).\n");
 }
 
-static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
+static int parse_options(int argc, char *argv[]) {
   int opt, option_index = 0;
   const char *i;
 
@@ -651,6 +651,21 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   return !out;
 }
 
+alpm_pkg_t *load_pkg(const char *url) {
+  alpm_pkg_t *pkg;
+  char *path = alpm_fetch_pkgurl(handle, url);
+  int err = alpm_pkg_load(handle, path ? path : url, 0, 0, &pkg);
+  free(path);
+
+  if (err) {
+    fprintf(stderr, "error: %s: %s\n", url,
+        alpm_strerror(alpm_errno(handle)));
+    return NULL;
+  }
+
+  return pkg;
+}
+
 static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   char *pkgname, *reponame;
   alpm_list_t *t, *r, *ret = NULL;
@@ -714,15 +729,14 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
 
 int main(int argc, char *argv[]) {
   int ret = 1;
-  alpm_handle_t *handle;
   alpm_list_t *results = NULL, *i;
 
-  handle = alpm_init();
+  alpm_init();
   if (!handle) {
     return ret;
   }
 
-  ret = parse_options(argc, argv, handle);
+  ret = parse_options(argc, argv);
   if (ret != 0) {
     goto finish;
   }
@@ -739,16 +753,10 @@ int main(int argc, char *argv[]) {
   if (localpkg) {
     /* load each target as a package */
     for (i = targets; i; i = alpm_list_next(i)) {
-      alpm_pkg_t *pkg;
-      int err;
-
-      err = alpm_pkg_load(handle, i->data, 0, 0, &pkg);
-      if (err) {
-        fprintf(stderr, "error: %s: %s\n", (const char*)i->data,
-            alpm_strerror(alpm_errno(handle)));
-        continue;
+      alpm_pkg_t *pkg = load_pkg(i->data);
+      if(pkg) {
+        results = alpm_list_add(results, pkg);
       }
-      results = alpm_list_add(results, pkg);
     }
   } else {
     results = resolve_pkg(targets);
