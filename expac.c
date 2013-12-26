@@ -54,7 +54,6 @@ alpm_list_t *targets = NULL;
 bool readone = false;
 bool verbose = false;
 bool search = false;
-bool local = false;
 bool groups = false;
 bool localpkg = false;
 char humansize = 'B';
@@ -257,7 +256,6 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
           return 1;
         }
         dblist = alpm_list_add(dblist, db_local);
-        local = true;
         break;
       case '1':
         readone = true;
@@ -731,7 +729,6 @@ int main(int argc, char *argv[]) {
 
   /* ensure sane defaults */
   if (!dblist && !localpkg) {
-    local = true;
     dblist = alpm_list_add(dblist, db_local);
   }
 
