@@ -313,7 +313,7 @@ static int parse_options(int argc, char *argv[]) {
   }
 
   while (optind < argc) {
-    targets = alpm_list_add(targets, argv[optind++]);
+    targets = alpm_list_add(targets, strdup(argv[optind++]));
   }
 
   return 0;
@@ -737,6 +737,37 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   return ret;
 }
 
+int read_targets_from_file(FILE *in, alpm_list_t **targets) {
+  char line[BUFSIZ];
+  int i = 0, end = 0;
+  while(!end) {
+    line[i] = fgetc(in);
+
+    if(line[i] == EOF) {
+      end = 1;
+    }
+
+    if(isspace(line[i]) || end) {
+      line[i] = '\0';
+      /* avoid adding zero length arg, if multiple spaces separate args */
+      if(i > 0) {
+        if(!alpm_list_find_str(*targets, line)) {
+          *targets = alpm_list_add(*targets, strdup(line));
+        }
+        i = 0;
+      }
+    } else {
+      ++i;
+      if(i >= BUFSIZ) {
+        fprintf(stderr, "error: buffer overflow detected in stdin\n");
+        return -1;
+      }
+    }
+  }
+
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   int ret = 1;
   alpm_list_t *results = NULL, *i;
@@ -761,6 +792,16 @@ int main(int argc, char *argv[]) {
   delim = delim ? delim : DEFAULT_DELIM;
   listdelim = listdelim ? listdelim : DEFAULT_LISTDELIM;
   timefmt = timefmt ? timefmt : DEFAULT_TIMEFMT;
+
+  if(alpm_list_find_str(targets, "-")) {
+    char *vdata;
+    targets = alpm_list_remove_str(targets, "-", &vdata);
+    free(vdata);
+    ret = read_targets_from_file(stdin, &targets);
+    if(ret != 0) {
+      goto finish;
+    }
+  }
 
   if (localpkg) {
     /* load each target as a package */
@@ -790,7 +831,7 @@ finish:
 
   alpm_list_free(dblist);
   alpm_list_free(all_dbs);
-  alpm_list_free(targets);
+  FREELIST(targets);
   alpm_release(handle);
   return ret;
 }

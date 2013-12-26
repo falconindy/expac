@@ -17,7 +17,9 @@ Invoking expac consists of supplying a format string, which is generally
 described by one to many of the formatting tokens (see the B<FORMATTING>
 section), any relevant options and zero to many targets. The format string
 B<must> be the first non-option argument. Targets can be a simple package name,
-a query string (in the case of a search), or in C<repo/package> syntax.
+a query string (in the case of a search), or in C<repo/package> syntax.  If
+a target is specified as a lone dash (-), additional targets will be read from
+stdin.
 
 =head1 OPTIONS
 
