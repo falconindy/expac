@@ -51,6 +51,7 @@ static char const printf_flags[] = "'-+ #0I";
 alpm_handle_t *handle = NULL;
 alpm_db_t *db_local = NULL;
 alpm_list_t *dblist = NULL;
+alpm_list_t *all_dbs = NULL;
 alpm_list_t *targets = NULL;
 bool readone = false;
 bool verbose = false;
@@ -690,17 +691,26 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
     }
   } else {
     for (t = targets; t; t = alpm_list_next(t)) {
+      alpm_list_t *srch_dbs = dblist;
       alpm_pkg_t *pkg = NULL;
       int found = 0;
 
       pkgname = reponame = t->data;
-      if (strchr(pkgname, '/')) {
+
+      if (strstr(pkgname, "://")) {
+        alpm_pkg_t *pkg = load_pkg(pkgname);
+        if(pkg) {
+          ret = alpm_list_add(ret, pkg);
+        }
+        continue;
+      } else if (strchr(pkgname, '/')) {
         strsep(&pkgname, "/");
+        srch_dbs = all_dbs;
       } else {
         reponame = NULL;
       }
 
-      for (r = dblist; r; r = alpm_list_next(r)) {
+      for (r = srch_dbs; r; r = alpm_list_next(r)) {
         alpm_db_t *repo = r->data;
 
         if (reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
@@ -735,6 +745,8 @@ int main(int argc, char *argv[]) {
   if (!handle) {
     return ret;
   }
+  all_dbs = alpm_list_copy(alpm_get_syncdbs(handle));
+  all_dbs = alpm_list_add(all_dbs, alpm_get_localdb(handle));
 
   ret = parse_options(argc, argv);
   if (ret != 0) {
@@ -772,13 +784,12 @@ int main(int argc, char *argv[]) {
   }
   ret = !!ret; /* clamp to zero/one */
 
-  if(localpkg) {
-    alpm_list_free_inner(results, (alpm_list_fn_free)alpm_pkg_free);
-  }
+finish:
+  alpm_list_free_inner(results, (alpm_list_fn_free)alpm_pkg_free);
   alpm_list_free(results);
 
-finish:
   alpm_list_free(dblist);
+  alpm_list_free(all_dbs);
   alpm_list_free(targets);
   alpm_release(handle);
   return ret;
