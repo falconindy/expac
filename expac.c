@@ -48,13 +48,14 @@
 static char const digits[] = "0123456789";
 static char const printf_flags[] = "'-+ #0I";
 
+alpm_handle_t *handle = NULL;
 alpm_db_t *db_local = NULL;
 alpm_list_t *dblist = NULL;
+alpm_list_t *all_dbs = NULL;
 alpm_list_t *targets = NULL;
 bool readone = false;
 bool verbose = false;
 bool search = false;
-bool local = false;
 bool groups = false;
 bool localpkg = false;
 char humansize = 'B';
@@ -147,8 +148,7 @@ static char *format_optdep(alpm_depend_t *optdep) {
   return out;
 }
 
-static alpm_handle_t *alpm_init(void) {
-  alpm_handle_t *handle = NULL;
+static void alpm_init(void) {
   enum _alpm_errno_t alpm_errno = 0;
   FILE *fp;
   char line[PATH_MAX];
@@ -157,7 +157,7 @@ static alpm_handle_t *alpm_init(void) {
   handle = alpm_initialize("/", "/var/lib/pacman", &alpm_errno);
   if (!handle) {
     alpm_strerror(alpm_errno);
-    return NULL;
+    return;
   }
 
   db_local = alpm_get_localdb(handle);
@@ -165,7 +165,7 @@ static alpm_handle_t *alpm_init(void) {
   fp = fopen("/etc/pacman.conf", "r");
   if (!fp) {
     perror("fopen: /etc/pacman.conf");
-    return handle;
+    return;
   }
 
   while (fgets(line, PATH_MAX, fp)) {
@@ -195,7 +195,7 @@ static alpm_handle_t *alpm_init(void) {
 
   free(section);
   fclose(fp);
-  return handle;
+  return;
 }
 
 static const char *alpm_dep_get_name(void *dep) {
@@ -207,7 +207,7 @@ static void usage(void) {
       "Usage: expac [options] <format> target...\n\n", VERSION);
   fprintf(stderr,
       " Options:\n"
-      "  -Q, --local               search local DB (default)\n"
+      "  -Q, --query               search local DB (default)\n"
       "  -S, --sync                search sync DBs\n"
       "  -s, --search              search for matching regex\n"
       "  -g, --group               return packages matching targets as groups\n"
@@ -222,7 +222,7 @@ static void usage(void) {
       "For more details see expac(1).\n");
 }
 
-static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
+static int parse_options(int argc, char *argv[]) {
   int opt, option_index = 0;
   const char *i;
 
@@ -257,7 +257,6 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
           return 1;
         }
         dblist = alpm_list_add(dblist, db_local);
-        local = true;
         break;
       case '1':
         readone = true;
@@ -314,7 +313,7 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
   }
 
   while (optind < argc) {
-    targets = alpm_list_add(targets, argv[optind++]);
+    targets = alpm_list_add(targets, strdup(argv[optind++]));
   }
 
   return 0;
@@ -653,6 +652,21 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   return !out;
 }
 
+alpm_pkg_t *load_pkg(const char *url) {
+  alpm_pkg_t *pkg;
+  char *path = alpm_fetch_pkgurl(handle, url);
+  int err = alpm_pkg_load(handle, path ? path : url, 0, 0, &pkg);
+  free(path);
+
+  if (err) {
+    fprintf(stderr, "error: %s: %s\n", url,
+        alpm_strerror(alpm_errno(handle)));
+    return NULL;
+  }
+
+  return pkg;
+}
+
 static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   char *pkgname, *reponame;
   alpm_list_t *t, *r, *ret = NULL;
@@ -677,17 +691,26 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
     }
   } else {
     for (t = targets; t; t = alpm_list_next(t)) {
+      alpm_list_t *srch_dbs = dblist;
       alpm_pkg_t *pkg = NULL;
       int found = 0;
 
       pkgname = reponame = t->data;
-      if (strchr(pkgname, '/')) {
+
+      if (strstr(pkgname, "://")) {
+        alpm_pkg_t *pkg = load_pkg(pkgname);
+        if(pkg) {
+          ret = alpm_list_add(ret, pkg);
+        }
+        continue;
+      } else if (strchr(pkgname, '/')) {
         strsep(&pkgname, "/");
+        srch_dbs = all_dbs;
       } else {
         reponame = NULL;
       }
 
-      for (r = dblist; r; r = alpm_list_next(r)) {
+      for (r = srch_dbs; r; r = alpm_list_next(r)) {
         alpm_db_t *repo = r->data;
 
         if (reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
@@ -714,24 +737,55 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   return ret;
 }
 
+int read_targets_from_file(FILE *in, alpm_list_t **targets) {
+  char line[BUFSIZ];
+  int i = 0, end = 0;
+  while(!end) {
+    line[i] = fgetc(in);
+
+    if(line[i] == EOF) {
+      end = 1;
+    }
+
+    if(isspace(line[i]) || end) {
+      line[i] = '\0';
+      /* avoid adding zero length arg, if multiple spaces separate args */
+      if(i > 0) {
+        if(!alpm_list_find_str(*targets, line)) {
+          *targets = alpm_list_add(*targets, strdup(line));
+        }
+        i = 0;
+      }
+    } else {
+      ++i;
+      if(i >= BUFSIZ) {
+        fprintf(stderr, "error: buffer overflow detected in stdin\n");
+        return -1;
+      }
+    }
+  }
+
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   int ret = 1;
-  alpm_handle_t *handle;
   alpm_list_t *results = NULL, *i;
 
-  handle = alpm_init();
+  alpm_init();
   if (!handle) {
     return ret;
   }
+  all_dbs = alpm_list_copy(alpm_get_syncdbs(handle));
+  all_dbs = alpm_list_add(all_dbs, alpm_get_localdb(handle));
 
-  ret = parse_options(argc, argv, handle);
+  ret = parse_options(argc, argv);
   if (ret != 0) {
     goto finish;
   }
 
   /* ensure sane defaults */
   if (!dblist && !localpkg) {
-    local = true;
     dblist = alpm_list_add(dblist, db_local);
   }
 
@@ -739,19 +793,23 @@ int main(int argc, char *argv[]) {
   listdelim = listdelim ? listdelim : DEFAULT_LISTDELIM;
   timefmt = timefmt ? timefmt : DEFAULT_TIMEFMT;
 
+  if(alpm_list_find_str(targets, "-")) {
+    char *vdata;
+    targets = alpm_list_remove_str(targets, "-", &vdata);
+    free(vdata);
+    ret = read_targets_from_file(stdin, &targets);
+    if(ret != 0) {
+      goto finish;
+    }
+  }
+
   if (localpkg) {
     /* load each target as a package */
     for (i = targets; i; i = alpm_list_next(i)) {
-      alpm_pkg_t *pkg;
-      int err;
-
-      err = alpm_pkg_load(handle, i->data, 0, 0, &pkg);
-      if (err) {
-        fprintf(stderr, "error: %s: %s\n", (const char*)i->data,
-            alpm_strerror(alpm_errno(handle)));
-        continue;
+      alpm_pkg_t *pkg = load_pkg(i->data);
+      if(pkg) {
+        results = alpm_list_add(results, pkg);
       }
-      results = alpm_list_add(results, pkg);
     }
   } else {
     results = resolve_pkg(targets);
@@ -767,14 +825,13 @@ int main(int argc, char *argv[]) {
   }
   ret = !!ret; /* clamp to zero/one */
 
-  if(localpkg) {
-    alpm_list_free_inner(results, (alpm_list_fn_free)alpm_pkg_free);
-  }
+finish:
+  alpm_list_free_inner(results, (alpm_list_fn_free)alpm_pkg_free);
   alpm_list_free(results);
 
-finish:
   alpm_list_free(dblist);
-  alpm_list_free(targets);
+  alpm_list_free(all_dbs);
+  FREELIST(targets);
   alpm_release(handle);
   return ret;
 }
