@@ -368,7 +368,7 @@ static int print_escaped(const char *delim) {
   return out;
 }
 
-static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
+static int print_list(alpm_list_t *list, extractfn fn) {
   alpm_list_t *i;
   int out = 0;
 
@@ -386,10 +386,6 @@ static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
       continue;
     }
 
-    if (shortdeps) {
-      *(item + strcspn(item, "<>=")) = '\0';
-    }
-
     out += printf("%s", item);
 
     if ((i = alpm_list_next(i))) {
@@ -402,8 +398,8 @@ static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
   return out;
 }
 
-static int print_allocated_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
-  int out = print_list(list, fn, shortdeps);
+static int print_allocated_list(alpm_list_t *list, extractfn fn) {
+  int out = print_list(list, fn);
   alpm_list_free(list);
   return out;
 }
@@ -504,7 +500,6 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   end = rawmemchr(format, '\0');
 
   for (f = format; f < end; f++) {
-    bool shortdeps = false;
     len = 0;
     if (*f == '%') {
       len = strspn(f + 1 + len, printf_flags);
@@ -579,46 +574,46 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += print_filelist(alpm_pkg_get_files(pkg));
           break;
         case 'N': /* requiredby */
-          out += print_list(alpm_pkg_compute_requiredby(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_compute_requiredby(pkg), NULL);
           break;
         case 'L': /* licenses */
-          out += print_list(alpm_pkg_get_licenses(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_licenses(pkg), NULL);
           break;
         case 'G': /* groups */
-          out += print_list(alpm_pkg_get_groups(pkg), NULL, shortdeps);
+          out += print_list(alpm_pkg_get_groups(pkg), NULL);
           break;
         case 'E': /* depends (shortdeps) */
-          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name, shortdeps);
+          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name);
           break;
         case 'D': /* depends */
-          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string, shortdeps);
+          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string);
           break;
         case 'O': /* optdepends */
-          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)format_optdep, shortdeps);
+          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)format_optdep);
           break;
         case 'o': /* optdepends (shortdeps) */
-          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)alpm_dep_get_name, shortdeps);
+          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)alpm_dep_get_name);
           break;
         case 'C': /* conflicts */
-          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_get_name, shortdeps);
+          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_get_name);
           break;
         case 'S': /* provides (shortdeps) */
-          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_get_name, shortdeps);
+          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_get_name);
           break;
         case 'P': /* provides */
-          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_compute_string, shortdeps);
+          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_compute_string);
           break;
         case 'R': /* replaces */
-          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_get_name, shortdeps);
+          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_get_name);
           break;
         case 'B': /* backup */
-          out += print_list(alpm_pkg_get_backup(pkg), alpm_backup_get_name, shortdeps);
+          out += print_list(alpm_pkg_get_backup(pkg), alpm_backup_get_name);
           break;
         case 'V': /* package validation */
-          out += print_allocated_list(get_validation_method(pkg), NULL, false);
+          out += print_allocated_list(get_validation_method(pkg), NULL);
           break;
         case 'M': /* modified */
-          out += print_allocated_list(get_modified_files(pkg), NULL, shortdeps);
+          out += print_allocated_list(get_modified_files(pkg), NULL);
           break;
         case '%':
           fputc('%', stdout);
