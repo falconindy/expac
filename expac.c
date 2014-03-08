@@ -443,11 +443,7 @@ static bool backup_file_is_modified(const alpm_backup_t *backup_file) {
   char *md5sum;
   bool modified;
 
-  snprintf(fullpath, PATH_MAX, "/%s", backup_file->name);
-
-  if(access(fullpath, R_OK) != 0) {
-    return false;
-  }
+  snprintf(fullpath, sizeof(fullpath), "/%s", backup_file->name);
 
   md5sum = alpm_compute_md5sum(fullpath);
   if(md5sum == NULL) {
@@ -656,7 +652,6 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
 
   if (!targets) {
     for (r = dblist; r; r = alpm_list_next(r)) {
-      /* joining causes corruption on alpm_release(), so we copy */
       ret = alpm_list_join(ret, alpm_list_copy(alpm_db_get_pkgcache(r->data)));
     }
   } else if (opt_search) {
