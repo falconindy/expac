@@ -402,6 +402,12 @@ static int print_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
   return out;
 }
 
+static int print_allocated_list(alpm_list_t *list, extractfn fn, bool shortdeps) {
+  int out = print_list(list, fn, shortdeps);
+  alpm_list_free(list);
+  return out;
+}
+
 static int print_time(time_t timestamp) {
   char buffer[64];
   int out = 0;
@@ -613,17 +619,11 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += print_list(alpm_pkg_get_backup(pkg), alpm_backup_get_name, shortdeps);
           break;
         case 'V': /* package validation */
-          out += print_list(get_validation_method(pkg), NULL, false);
+          out += print_allocated_list(get_validation_method(pkg), NULL, false);
           break;
         case 'M': /* modified */
-        {
-          alpm_list_t *modified_files = get_modified_files(pkg);
-          if(modified_files != NULL) {
-            out += print_list(modified_files, NULL, shortdeps);
-            alpm_list_free(modified_files);
-          }
+          out += print_allocated_list(get_modified_files(pkg), NULL, shortdeps);
           break;
-        }
         case '%':
           fputc('%', stdout);
           out++;
