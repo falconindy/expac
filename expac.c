@@ -497,7 +497,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   char fmt[64], buf[64];
   int len, out = 0;
 
-  end = format + strlen(format) - 1;
+  end = format + strlen(format);
 
   for (f = format; f < end; f++) {
     len = 0;
