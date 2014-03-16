@@ -148,24 +148,24 @@ static char *format_optdep(alpm_depend_t *optdep) {
 }
 
 static alpm_handle_t *alpm_init(void) {
-  alpm_handle_t *handle = NULL;
+  alpm_handle_t *alpm = NULL;
   enum _alpm_errno_t alpm_errno = 0;
   FILE *fp;
   char line[PATH_MAX];
   char *ptr, *section = NULL;
 
-  handle = alpm_initialize("/", "/var/lib/pacman", &alpm_errno);
-  if (!handle) {
+  alpm = alpm_initialize("/", "/var/lib/pacman", &alpm_errno);
+  if (!alpm) {
     alpm_strerror(alpm_errno);
     return NULL;
   }
 
-  db_local = alpm_get_localdb(handle);
+  db_local = alpm_get_localdb(alpm);
 
   fp = fopen("/etc/pacman.conf", "r");
   if (!fp) {
     perror("fopen: /etc/pacman.conf");
-    return handle;
+    return alpm;
   }
 
   while (fgets(line, PATH_MAX, fp)) {
@@ -188,14 +188,14 @@ static alpm_handle_t *alpm_init(void) {
       section[strlen(section) - 1] = '\0';
 
       if (strcmp(section, "options") != 0) {
-        alpm_register_syncdb(handle, section, 0);
+        alpm_register_syncdb(alpm, section, 0);
       }
     }
   }
 
   free(section);
   fclose(fp);
-  return handle;
+  return alpm;
 }
 
 static const char *alpm_dep_get_name(void *dep) {
@@ -222,7 +222,7 @@ static void usage(void) {
       "For more details see expac(1).\n");
 }
 
-static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
+static int parse_options(int argc, char *argv[], alpm_handle_t *alpm) {
   int opt, option_index = 0;
   const char *i;
 
@@ -249,7 +249,7 @@ static int parse_options(int argc, char *argv[], alpm_handle_t *handle) {
           fprintf(stderr, "error: can only select one repo option (use -h for help)\n");
           return 1;
         }
-        dblist = alpm_list_copy(alpm_get_syncdbs(handle));
+        dblist = alpm_list_copy(alpm_get_syncdbs(alpm));
         break;
       case 'Q':
         if (dblist) {
@@ -497,7 +497,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   char fmt[64], buf[64];
   int len, out = 0;
 
-  end = rawmemchr(format, '\0');
+  end = format + strlen(format) - 1;
 
   for (f = format; f < end; f++) {
     len = 0;
@@ -641,77 +641,129 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   return !out;
 }
 
+static alpm_list_t *all_packages(alpm_list_t *dbs) {
+  alpm_list_t *i, *packages = NULL;
+
+  for (i = dbs; i; i = i->next) {
+    packages = alpm_list_join(packages, alpm_list_copy(alpm_db_get_pkgcache(i->data)));
+  }
+
+  return packages;
+}
+
+static alpm_list_t *search_packages(alpm_list_t *dbs, alpm_list_t *targets) {
+  alpm_list_t *i, *packages = NULL;
+
+  for (i = dbs; i; i = i->next) {
+    packages = alpm_list_join(packages, alpm_db_search(i->data, targets));
+  }
+
+  return packages;
+}
+
+static alpm_list_t *search_groups(alpm_list_t *dbs, alpm_list_t *groupnames) {
+  alpm_list_t *i, *j, *packages = NULL;
+
+  for (i = groupnames; i; i = i->next) {
+    for (j = dbs; j; j = j->next) {
+      alpm_group_t *grp = alpm_db_get_group(j->data, i->data);
+      if (grp != NULL) {
+        packages = alpm_list_join(packages, alpm_list_copy(grp->packages));
+      }
+    }
+  }
+
+  return packages;
+}
+
 static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
   char *pkgname, *reponame;
   alpm_list_t *t, *r, *ret = NULL;
 
-  if (!targets) {
-    for (r = dblist; r; r = alpm_list_next(r)) {
-      ret = alpm_list_join(ret, alpm_list_copy(alpm_db_get_pkgcache(r->data)));
-    }
+  if (targets == NULL) {
+    return all_packages(dblist);
   } else if (opt_search) {
-    for (r = dblist; r; r = alpm_list_next(r)) {
-      ret = alpm_list_join(ret, alpm_db_search(r->data, targets));
-    }
+    return search_packages(dblist, targets);
   } else if (opt_groups) {
-    for (t = targets; t; t = alpm_list_next(t)) {
-      for (r = dblist; r; r = alpm_list_next(r)) {
-        alpm_group_t *grp = alpm_db_get_group(r->data, t->data);
-        if (grp) {
-          ret = alpm_list_join(ret, alpm_list_copy(grp->packages));
-        }
+    return search_groups(dblist, targets);
+  }
+
+  /* resolve each target individually from the repo pool */
+  for (t = targets; t; t = alpm_list_next(t)) {
+    alpm_pkg_t *pkg = NULL;
+    int found = 0;
+
+    pkgname = reponame = t->data;
+    if (strchr(pkgname, '/')) {
+      strsep(&pkgname, "/");
+    } else {
+      reponame = NULL;
+    }
+
+    for (r = dblist; r; r = alpm_list_next(r)) {
+      alpm_db_t *repo = r->data;
+
+      if (reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
+        continue;
+      }
+
+      if (!(pkg = alpm_db_get_pkg(repo, pkgname)) &&
+          !(pkg = alpm_find_satisfier(alpm_db_get_pkgcache(repo), pkgname))) {
+        continue;
+      }
+
+      found = 1;
+      ret = alpm_list_add(ret, pkg);
+      if (opt_readone) {
+        break;
       }
     }
-  } else {
-    for (t = targets; t; t = alpm_list_next(t)) {
-      alpm_pkg_t *pkg = NULL;
-      int found = 0;
 
-      pkgname = reponame = t->data;
-      if (strchr(pkgname, '/')) {
-        strsep(&pkgname, "/");
-      } else {
-        reponame = NULL;
-      }
-
-      for (r = dblist; r; r = alpm_list_next(r)) {
-        alpm_db_t *repo = r->data;
-
-        if (reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
-          continue;
-        }
-
-        if (!(pkg = alpm_db_get_pkg(repo, pkgname)) &&
-            !(pkg = alpm_find_satisfier(alpm_db_get_pkgcache(repo), pkgname))) {
-          continue;
-        }
-
-        found = 1;
-        ret = alpm_list_add(ret, pkg);
-        if (opt_readone) {
-          break;
-        }
-      }
-      if (!found && opt_verbose) {
-        fprintf(stderr, "error: package `%s' not found\n", pkgname);
-      }
+    if (!found && opt_verbose) {
+      fprintf(stderr, "error: package `%s' not found\n", pkgname);
     }
   }
 
   return ret;
 }
 
+static alpm_list_t *gather_packages(alpm_handle_t *alpm, alpm_list_t *targets) {
+  alpm_list_t *results = NULL;
+
+  if (opt_localpkg) {
+    alpm_list_t *i;
+
+    /* load each target as a package */
+    for (i = targets; i; i = alpm_list_next(i)) {
+      alpm_pkg_t *pkg;
+      int err;
+
+      err = alpm_pkg_load(alpm, i->data, 0, 0, &pkg);
+      if (err) {
+        fprintf(stderr, "error: %s: %s\n", (const char*)i->data,
+            alpm_strerror(alpm_errno(alpm)));
+        continue;
+      }
+      results = alpm_list_add(results, pkg);
+    }
+  } else {
+    results = resolve_pkg(targets);
+  }
+
+  return results;
+}
+
 int main(int argc, char *argv[]) {
   int ret = 1;
-  alpm_handle_t *handle;
+  alpm_handle_t *alpm;
   alpm_list_t *results = NULL, *i;
 
-  handle = alpm_init();
-  if (!handle) {
+  alpm = alpm_init();
+  if (!alpm) {
     return ret;
   }
 
-  ret = parse_options(argc, argv, handle);
+  ret = parse_options(argc, argv, alpm);
   if (ret != 0) {
     goto finish;
   }
@@ -722,26 +774,10 @@ int main(int argc, char *argv[]) {
     dblist = alpm_list_add(dblist, db_local);
   }
 
-  if (opt_localpkg) {
-    /* load each target as a package */
-    for (i = targets; i; i = alpm_list_next(i)) {
-      alpm_pkg_t *pkg;
-      int err;
-
-      err = alpm_pkg_load(handle, i->data, 0, 0, &pkg);
-      if (err) {
-        fprintf(stderr, "error: %s: %s\n", (const char*)i->data,
-            alpm_strerror(alpm_errno(handle)));
-        continue;
-      }
-      results = alpm_list_add(results, pkg);
-    }
-  } else {
-    results = resolve_pkg(targets);
-    if (!results) {
-      ret = 1;
-      goto finish;
-    }
+  results = gather_packages(alpm, targets);
+  if (results == NULL) {
+    ret = 1;
+    goto finish;
   }
 
   for (i = results; i; i = alpm_list_next(i)) {
@@ -758,7 +794,7 @@ int main(int argc, char *argv[]) {
 finish:
   alpm_list_free(dblist);
   alpm_list_free(targets);
-  alpm_release(handle);
+  alpm_release(alpm);
   return ret;
 }
 
