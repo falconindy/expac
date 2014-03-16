@@ -708,7 +708,7 @@ static alpm_list_t *resolve_pkg(alpm_list_t *targets) {
       }
 
       if (!(pkg = alpm_db_get_pkg(repo, pkgname)) &&
-          !(pkg = alpm_find_satisfier(alpm_db_get_pkgcache(repo), pkgname))) {
+          !(pkg = alpm_db_get_pkg(repo, pkgname))) {
         continue;
       }
 
