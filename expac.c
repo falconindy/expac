@@ -627,6 +627,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
     } else if (*f == '\\') {
       char esc[3] = { f[0], f[1], '\0' };
       out += print_escaped(esc);
+      ++f;
     } else {
       fputc(*f, stdout);
       out++;
