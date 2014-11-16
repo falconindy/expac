@@ -142,7 +142,8 @@ static void usage(void) {
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
       "  -p, --file                query local files instead of the DB\n"
-      "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n\n"
+      "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n"
+      "      --config <file>       read from <file> for alpm initialization (default: /etc/pacman.conf)\n\n"
       "  -v, --verbose             be more verbose\n\n"
       "  -h, --help                display this help and exit\n\n"
       "For more details see expac(1).\n");
@@ -162,6 +163,7 @@ static int parse_options(int argc, char *argv[]) {
     {"search",    no_argument,        0, 's'},
     {"timefmt",   required_argument,  0, 't'},
     {"verbose",   no_argument,        0, 'v'},
+    {"config",    required_argument,  0, 128},
     {0, 0, 0, 0}
   };
 
@@ -200,7 +202,7 @@ static int parse_options(int argc, char *argv[]) {
         break;
       case 'h':
         usage();
-        return 1;
+        exit(0);
       case 'p':
         opt_corpus = CORPUS_FILE;
         break;
@@ -212,6 +214,9 @@ static int parse_options(int argc, char *argv[]) {
         break;
       case 'v':
         opt_verbose = true;
+        break;
+      case 128:
+        opt_config_file = optarg;
         break;
 
       case '?':

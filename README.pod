@@ -41,6 +41,10 @@ boolean AND query and regex is allowed.
 
 Return packages matching the specified targets as package groups.
 
+=item B<--config> <file>
+
+Read from I<file> for alpm initialization instead of I</etc/pacman.conf>.
+
 =item B<-H, --humansize> <size>
 
 Format package sizes in SI units according to I<size>. Valid options are:
