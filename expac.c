@@ -57,11 +57,9 @@ alpm_db_t *db_local = NULL;
 alpm_list_t *targets = NULL;
 bool opt_readone = false;
 bool opt_verbose = false;
-bool opt_search = false;
-bool opt_groups = false;
-bool opt_localpkg = false;
 char opt_humansize = 'B';
-SearchCorpus opt_corpus = SEARCH_LOCAL;
+PackageCorpus opt_corpus = CORPUS_LOCAL;
+SearchWhat opt_what = 0;
 const char *opt_format = NULL;
 const char *opt_timefmt = DEFAULT_TIMEFMT;
 const char *opt_listdelim = DEFAULT_LISTDELIM;
@@ -70,6 +68,11 @@ const char *opt_config_file = "/etc/pacman.conf";
 int opt_pkgcounter = 0;
 
 typedef const char *(*extractfn)(void*);
+
+static int is_valid_size_unit(char *u) {
+  return u[0] != '\0' && u[1] == '\0' &&
+    memchr(SIZE_TOKENS, *u, strlen(SIZE_TOKENS)) != NULL;
+}
 
 static const char *alpm_backup_get_name(alpm_backup_t *bkup) {
   return bkup->name;
@@ -147,8 +150,6 @@ static void usage(void) {
 }
 
 static int parse_options(int argc, char *argv[]) {
-  const char *i;
-
   static struct option opts[] = {
     {"readone",   no_argument,        0, '1'},
     {"delim",     required_argument,  0, 'd'},
@@ -174,10 +175,10 @@ static int parse_options(int argc, char *argv[]) {
 
     switch (opt) {
       case 'S':
-        opt_corpus = SEARCH_SYNC;
+        opt_corpus = CORPUS_SYNC;
         break;
       case 'Q':
-        opt_corpus = SEARCH_LOCAL;
+        opt_corpus = CORPUS_LOCAL;
         break;
       case '1':
         opt_readone = true;
@@ -186,31 +187,26 @@ static int parse_options(int argc, char *argv[]) {
         opt_delim = optarg;
         break;
       case 'g':
-        opt_groups = true;
+        opt_what |= SEARCH_GROUPS;
         break;
       case 'l':
         opt_listdelim = optarg;
         break;
       case 'H':
-        for (i = SIZE_TOKENS; *i; i++) {
-          if (*i == *optarg) {
-            opt_humansize = *optarg;
-            break;
-          }
-        }
-        if (*i == '\0') {
-          fprintf(stderr, "error: invalid SI size formatter: %c\n", *optarg);
+        if (!is_valid_size_unit(optarg)) {
+          fprintf(stderr, "error: invalid SI size formatter: %s\n", optarg);
           return 1;
         }
+        opt_humansize = *optarg;
         break;
       case 'h':
         usage();
         return 1;
       case 'p':
-        opt_corpus = SEARCH_FILE;
+        opt_corpus = CORPUS_FILE;
         break;
       case 's':
-        opt_search = true;
+        opt_what |= SEARCH_REGEX;
         break;
       case 't':
         opt_timefmt = optarg;
@@ -220,9 +216,9 @@ static int parse_options(int argc, char *argv[]) {
         break;
 
       case '?':
-        return 1;
+        return -EINVAL;
       default:
-        return 1;
+        return -EINVAL;
     }
   }
 
@@ -230,12 +226,11 @@ static int parse_options(int argc, char *argv[]) {
     opt_format = argv[optind++];
   else {
     fprintf(stderr, "error: missing format string (use -h for help)\n");
-    return 1;
+    return -EINVAL;
   }
 
-  while (optind < argc) {
+  while (optind < argc)
     targets = alpm_list_add(targets, argv[optind++]);
-  }
 
   return 0;
 }
@@ -329,9 +324,8 @@ static int print_time(time_t timestamp) {
   int out = 0;
 
   if (!timestamp) {
-    if (opt_verbose) {
+    if (opt_verbose)
       out += printf("None");
-    }
     return out;
   }
 
@@ -553,9 +547,8 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   }
 
   /* only print a delimeter if any package data was outputted */
-  if (out > 0) {
+  if (out > 0)
     print_escaped(opt_delim);
-  }
 
   return !out;
 }
@@ -595,20 +588,15 @@ static alpm_list_t *search_groups(alpm_list_t *dbs, alpm_list_t *groupnames) {
   return packages;
 }
 
-static alpm_list_t *resolve_pkg(alpm_list_t *dblist, alpm_list_t *targets) {
+static alpm_list_t *search_exact(alpm_list_t *dblist, alpm_list_t *targets) {
   char *pkgname, *reponame;
-  alpm_list_t *t, *r, *ret = NULL;
-
-  if (targets == NULL)
-    return all_packages(dblist);
-  else if (opt_search)
-    return search_packages(dblist, targets);
-  else if (opt_groups)
-    return search_groups(dblist, targets);
+  alpm_list_t *results = NULL;
+  alpm_list_t *t;
 
   /* resolve each target individually from the repo pool */
   for (t = targets; t; t = t->next) {
     alpm_pkg_t *pkg = NULL;
+    alpm_list_t *r;
     int found = 0;
 
     pkgname = reponame = t->data;
@@ -628,7 +616,7 @@ static alpm_list_t *resolve_pkg(alpm_list_t *dblist, alpm_list_t *targets) {
         continue;
 
       found = 1;
-      ret = alpm_list_add(ret, pkg);
+      results = alpm_list_add(results, pkg);
       if (opt_readone)
         break;
     }
@@ -637,7 +625,24 @@ static alpm_list_t *resolve_pkg(alpm_list_t *dblist, alpm_list_t *targets) {
       fprintf(stderr, "error: package `%s' not found\n", pkgname);
   }
 
-  return ret;
+  return results;
+}
+
+static alpm_list_t *resolve_targets(alpm_list_t *dblist, alpm_list_t *targets) {
+  if (targets == NULL)
+    return all_packages(dblist);
+
+  /* no method specified */
+  if ((opt_what & (_SEARCH_MAX - 1)) == 0)
+    return search_exact(dblist, targets);
+
+  if (opt_what & SEARCH_REGEX)
+    return search_packages(dblist, targets);
+
+  if (opt_what & SEARCH_GROUPS)
+    return search_groups(dblist, targets);
+
+  return NULL;
 }
 
 void expac_free(Expac *expac) {
@@ -681,54 +686,51 @@ int expac_new(Expac **expac, int argc, char **argv) {
   return 0;
 }
 
-int expac_search_files(Expac *expac, alpm_list_t *targets, alpm_list_t **results) {
-  alpm_list_t *i;
+alpm_list_t *expac_search_files(Expac *expac, alpm_list_t *targets) {
+  alpm_list_t *i, *r = NULL;
 
-  /* load each target as a package */
-  for (i = targets; i; i = alpm_list_next(i)) {
+  for (i = targets; i; i = i->next) {
+    const char *path = i->data;
     alpm_pkg_t *pkg;
-    int err;
 
-    err = alpm_pkg_load(expac->alpm, i->data, 0, 0, &pkg);
-    if (err) {
-      fprintf(stderr, "error: %s: %s\n", (const char*)i->data,
+    if (alpm_pkg_load(expac->alpm, path, 0, 0, &pkg) != 0) {
+      fprintf(stderr, "error: %s: %s\n", path,
           alpm_strerror(alpm_errno(expac->alpm)));
       continue;
     }
-    *results = alpm_list_add(*results, pkg);
+
+    r = alpm_list_add(r, pkg);
   }
 
-  return 0;
+  return r;
 }
 
-int expac_search_local(Expac *expac, alpm_list_t *targets, alpm_list_t **results) {
-  alpm_list_t *dblist;
+alpm_list_t *expac_search_local(Expac *expac, alpm_list_t *targets) {
+  alpm_list_t *dblist, *r;
 
   dblist = alpm_list_add(NULL, alpm_get_localdb(expac->alpm));
-
-  *results = resolve_pkg(dblist, targets);
-
+  r = resolve_targets(alpm_list_add(NULL, alpm_get_localdb(expac->alpm)), targets);
   alpm_list_free(dblist);
 
-  return 0;
+  return r;
 }
 
-int expac_search_sync(Expac *expac, alpm_list_t *targets, alpm_list_t **results) {
-  *results = resolve_pkg(alpm_get_syncdbs(expac->alpm), targets);
-  return 0;
+alpm_list_t *expac_search_sync(Expac *expac, alpm_list_t *targets) {
+  return resolve_targets(alpm_get_syncdbs(expac->alpm), targets);
 }
 
-int expac_search(Expac *expac, alpm_list_t *targets, alpm_list_t **results) {
-  switch (opt_corpus) {
-  case SEARCH_LOCAL:
-    return expac_search_local(expac, targets, results);
-  case SEARCH_SYNC:
-    return expac_search_sync(expac, targets, results);
-  case SEARCH_FILE:
-    return expac_search_files(expac, targets, results);
+alpm_list_t *expac_search(Expac *expac, PackageCorpus corpus, alpm_list_t *targets) {
+  switch (corpus) {
+  case CORPUS_LOCAL:
+    return expac_search_local(expac, targets);
+  case CORPUS_SYNC:
+    return expac_search_sync(expac, targets);
+  case CORPUS_FILE:
+    return expac_search_files(expac, targets);
   }
 
-  return 0;
+  /* should be unreachable */
+  return NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -740,11 +742,8 @@ int main(int argc, char *argv[]) {
   if (r < 0)
     return 1;
 
-  r = expac_search(expac, targets, &results);
-  if (r < 0)
-    return 1;
-
-  if (alpm_list_count(results) == 0)
+  results = expac_search(expac, opt_corpus, targets);
+  if (results == NULL)
     return 1;
 
   for (alpm_list_t *i = results; i; i = i->next)
@@ -753,7 +752,7 @@ int main(int argc, char *argv[]) {
   alpm_list_free(results);
   expac_free(expac);
 
-  return r;
+  return 0;
 }
 
 /* vim: set et ts=2 sw=2: */

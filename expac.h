@@ -3,17 +3,22 @@
 
 #include <alpm.h>
 
-typedef enum SearchCorpus {
-  SEARCH_LOCAL,
-  SEARCH_SYNC,
-  SEARCH_FILE,
-} SearchCorpus;
+typedef enum PackageCorpus {
+  CORPUS_LOCAL,
+  CORPUS_SYNC,
+  CORPUS_FILE,
+} PackageCorpus;
+
+typedef enum SearchWhat {
+  SEARCH_GROUPS = (1 << 0),
+  SEARCH_REGEX  = (1 << 1),
+  SEARCH_EXACT  = (1 << 2),
+  _SEARCH_MAX   = (1 << 15),
+} SearchWhat;
 
 typedef struct Expac {
   alpm_handle_t *alpm;
   alpm_db_t *db_local;
-
-  SearchCorpus search_type;
 } Expac;
 
 int expac_new(Expac **expac, int argc, char **argv);
