@@ -6,8 +6,8 @@ PREFIX ?= /usr/local
 MANPREFIX ?= $(PREFIX)/share/man
 
 # compiler flags
-CPPFLAGS := -DVERSION=\"$(VERSION)\" $(CPPFLAGS)
-CFLAGS   := -std=c99 -g -pedantic -Wall -Wextra $(CFLAGS)
+CPPFLAGS := -DVERSION=\"$(VERSION)\" -D_GNU_SOURCE $(CPPFLAGS)
+CFLAGS   := -std=c11 -g -pedantic -Wall -Wextra -Wno-missing-field-initializers $(CFLAGS)
 LDLIBS    = -lalpm
 
 DISTFILES = expac.c README.pod
