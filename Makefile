@@ -12,6 +12,13 @@ LDLIBS    = -lalpm
 
 DISTFILES = expac.c README.pod
 
+expac_SOURCES = \
+	expac.c \
+	conf.c conf.h \
+	util.h
+
+expac: $(expac_SOURCES)
+
 all: expac doc
 
 doc: expac.1
@@ -30,6 +37,6 @@ dist: clean
 	rm -rf expac-$(VERSION)
 
 clean:
-	$(RM) expac.o expac expac.1
+	$(RM) *.o expac expac.1
 
 .PHONY: all clean dist doc install doc
