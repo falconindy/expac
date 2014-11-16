@@ -156,6 +156,14 @@ static int parse_one_file(config_t *config, const char *filename, char **section
         k = parse_include(config, val, section);
         if (k < 0)
           return k;
+      } else if (strcmp(line, "DBPath") == 0) {
+        config->dbpath = strdup(val);
+        if (config->dbpath == NULL)
+          return -ENOMEM;
+      } else if (strcmp(line, "RootDir") == 0) {
+        config->dbroot = strdup(val);
+        if (config->dbpath == NULL)
+          return -ENOMEM;
       }
     }
   }
@@ -169,6 +177,9 @@ void config_reset(config_t *config) {
 
   for (int i = 0; i < config->size; ++i)
     free(config->repos[i]);
+
+  free(config->dbroot);
+  free(config->dbpath);
 
   free(config->repos);
 }

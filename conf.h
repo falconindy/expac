@@ -5,6 +5,9 @@ typedef struct config_t {
   char **repos;
   int size;
   int capacity;
+
+  char *dbroot;
+  char *dbpath;
 } config_t;
 
 int config_parse(config_t *config, const char *filename);

@@ -53,7 +53,6 @@
 static char const digits[] = "0123456789";
 static char const printf_flags[] = "'-+ #0I";
 
-alpm_db_t *db_local = NULL;
 alpm_list_t *targets = NULL;
 bool opt_readone = false;
 bool opt_verbose = false;
@@ -353,6 +352,7 @@ static bool backup_file_is_modified(const alpm_backup_t *backup_file) {
   _cleanup_free_ char *md5sum = NULL;
   bool modified;
 
+  /* TODO: respect expac->dbroot */
   snprintf(fullpath, sizeof(fullpath), "/%s", backup_file->name);
 
   md5sum = alpm_compute_md5sum(fullpath);
@@ -655,7 +655,9 @@ void expac_free(Expac *expac) {
 int expac_new(Expac **expac, int argc, char **argv) {
   Expac *e;
   enum _alpm_errno_t alpm_errno = 0;
-  config_t config = { NULL, 0, 0 };
+  config_t config = { NULL, 0, 0, NULL, NULL };
+  const char *dbroot = "/";
+  const char *dbpath = "/var/lib/pacman";
   int r;
 
   r = parse_options(argc, argv);
@@ -670,7 +672,13 @@ int expac_new(Expac **expac, int argc, char **argv) {
   if (r < 0)
     return r;
 
-  e->alpm = alpm_initialize("/", "/var/lib/pacman", &alpm_errno);
+  if (config.dbpath)
+    dbpath = config.dbpath;
+
+  if (config.dbroot)
+    dbroot = config.dbroot;
+
+  e->alpm = alpm_initialize(dbroot, dbpath, &alpm_errno);
   if (!e->alpm)
     return -alpm_errno;
 
