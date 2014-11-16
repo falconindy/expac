@@ -18,10 +18,9 @@ typedef enum SearchWhat {
 
 typedef struct Expac {
   alpm_handle_t *alpm;
-  alpm_db_t *db_local;
 } Expac;
 
-int expac_new(Expac **expac, int argc, char **argv);
+int expac_new(Expac **expac, const char *config_file);
 
 #endif  /* _EXPAC_H */
 

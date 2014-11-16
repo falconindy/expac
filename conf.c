@@ -71,7 +71,8 @@ static int config_add_repo(config_t *config, char *reponame) {
 static int parse_one_file(config_t *config, const char *filename, char **section);
 
 static int parse_include(config_t *config, const char *include, char **section) {
-  _cleanup_(globfreep) glob_t globbuf = {};
+  glob_t globbuf;
+  int r = 0;
 
   if (glob(include, GLOB_NOCHECK, NULL, &globbuf) != 0) {
     fprintf(stderr, "warning: globbing failed on '%s': out of memory\n",
@@ -80,13 +81,13 @@ static int parse_include(config_t *config, const char *include, char **section) 
   }
 
   for (size_t i = 0; i < globbuf.gl_pathc; ++i) {
-    int r;
     r = parse_one_file(config, globbuf.gl_pathv[i], section);
     if (r < 0)
-      return r;
+      break;
   }
 
-  return 0;
+  globfree(&globbuf);
+  return r;
 }
 
 static char *split_keyval(char *line, const char *sep) {

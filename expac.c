@@ -657,23 +657,21 @@ void expac_free(Expac *expac) {
   alpm_release(expac->alpm);
 }
 
-int expac_new(Expac **expac, int argc, char **argv) {
+int expac_new(Expac **expac, const char *config_file) {
   Expac *e;
   enum _alpm_errno_t alpm_errno = 0;
-  config_t config = { NULL, 0, 0, NULL, NULL };
+  config_t config;
   const char *dbroot = "/";
   const char *dbpath = "/var/lib/pacman";
   int r;
-
-  r = parse_options(argc, argv);
-  if (r < 0)
-    return r;
 
   e = calloc(1, sizeof(*e));
   if (e == NULL)
     return -ENOMEM;
 
-  r = config_parse(&config, opt_config_file);
+  memset(&config, 0, sizeof(config));
+
+  r = config_parse(&config, config_file);
   if (r < 0)
     return r;
 
@@ -686,8 +684,6 @@ int expac_new(Expac **expac, int argc, char **argv) {
   e->alpm = alpm_initialize(dbroot, dbpath, &alpm_errno);
   if (!e->alpm)
     return -alpm_errno;
-
-  e->db_local = alpm_get_localdb(e->alpm);
 
   for (int i = 0; i < config.size; ++i)
     alpm_register_syncdb(e->alpm, config.repos[i], 0);
@@ -751,7 +747,11 @@ int main(int argc, char *argv[]) {
   Expac *expac;
   int r;
 
-  r = expac_new(&expac, argc, argv);
+  r = parse_options(argc, argv);
+  if (r < 0)
+    return 1;
+
+  r = expac_new(&expac, opt_config_file);
   if (r < 0)
     return 1;
 
