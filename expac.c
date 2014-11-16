@@ -162,8 +162,12 @@ static int parse_include(config_t *config, const char *include, char **section) 
     return -ENOMEM;
   }
 
-  for (size_t i = 0; i < globbuf.gl_pathc; ++i)
-    parse_one_file(config, globbuf.gl_pathv[i], section);
+  for (size_t i = 0; i < globbuf.gl_pathc; ++i) {
+    int r;
+    r = parse_one_file(config, globbuf.gl_pathv[i], section);
+    if (r < 0)
+      return r;
+  }
 
   return 0;
 }
@@ -173,11 +177,14 @@ static char *split_keyval(char *line, const char *sep) {
   return line;
 }
 
-int parse_one_file(config_t *config, const char *filename, char **section) {
+static int parse_one_file(config_t *config, const char *filename, char **section) {
   _cleanup_(fclosep) FILE *fp = NULL;
   _cleanup_free_ char *line = NULL;
   size_t n = 0;
   int in_options = 0;
+
+  if (*section)
+    in_options = strcmp(*section, "options") == 0;
 
   fp = fopen(filename, "r");
   if (fp == NULL)
@@ -201,14 +208,12 @@ int parse_one_file(config_t *config, const char *filename, char **section) {
       continue;
 
     if (is_section(line, len)) {
-
       free(*section);
       *section = strndup(&line[1], len - 2);
       if (*section == NULL)
         return -ENOMEM;
 
       in_options = strcmp(*section, "options") == 0;
-
       if (!in_options) {
         int r;
 
@@ -216,26 +221,24 @@ int parse_one_file(config_t *config, const char *filename, char **section) {
         if (r < 0)
           return r;
 
-        continue;
       }
+      continue;
     }
 
-    if (in_options) {
+    if (in_options && memchr(line, '=', len)) {
       char *val;
 
-      if (memchr(line, '=', len)) {
-        val = split_keyval(line, "=");
+      val = split_keyval(line, "=");
+      strtrim(line);
+
+      if (strcmp(line, "Include") == 0) {
+        int k;
 
         strtrim(val);
-        strtrim(line);
 
-        if (strcmp(line, "Include") == 0) {
-          int k;
-
-          k = parse_include(config, val, section);
-          if (k < 0)
-            return k;
-        }
+        k = parse_include(config, val, section);
+        if (k < 0)
+          return k;
       }
     }
   }
@@ -243,14 +246,13 @@ int parse_one_file(config_t *config, const char *filename, char **section) {
   return 0;
 }
 
-int config_parse(config_t *config, const char *filename) {
+static int config_parse(config_t *config, const char *filename) {
   _cleanup_free_ char *section = NULL;
 
   return parse_one_file(config, filename, &section);
 }
-static const char *alpm_backup_get_name(void *b)
-{
-  alpm_backup_t *bkup = b;
+
+static const char *alpm_backup_get_name(alpm_backup_t *bkup) {
   return bkup->name;
 }
 
@@ -279,8 +281,7 @@ static double humanize_size(off_t bytes, const char target_unit, const char **la
   return val;
 }
 
-static char *size_to_string(off_t pkgsize)
-{
+static char *size_to_string(off_t pkgsize) {
   static char out[64];
 
   if(opt_humansize == 'B') {
@@ -569,7 +570,7 @@ static int print_filelist(alpm_filelist_t *filelist) {
 
 static bool backup_file_is_modified(const alpm_backup_t *backup_file) {
   char fullpath[PATH_MAX];
-  char *md5sum;
+  _cleanup_free_ char *md5sum = NULL;
   bool modified;
 
   snprintf(fullpath, sizeof(fullpath), "/%s", backup_file->name);
@@ -580,8 +581,6 @@ static bool backup_file_is_modified(const alpm_backup_t *backup_file) {
   }
 
   modified = strcmp(md5sum, backup_file->hash) != 0;
-
-  free(md5sum);
 
   return modified;
 }
@@ -740,7 +739,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_get_name);
           break;
         case 'B': /* backup */
-          out += print_list(alpm_pkg_get_backup(pkg), alpm_backup_get_name);
+          out += print_list(alpm_pkg_get_backup(pkg), (extractfn)alpm_backup_get_name);
           break;
         case 'V': /* package validation */
           out += print_allocated_list(get_validation_method(pkg), NULL);
