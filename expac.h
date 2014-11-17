@@ -10,10 +10,9 @@ typedef enum PackageCorpus {
 } PackageCorpus;
 
 typedef enum SearchWhat {
-  SEARCH_GROUPS = (1 << 0),
-  SEARCH_REGEX  = (1 << 1),
-  SEARCH_EXACT  = (1 << 2),
-  _SEARCH_MAX   = (1 << 15),
+  SEARCH_EXACT,
+  SEARCH_GROUPS,
+  SEARCH_REGEX,
 } SearchWhat;
 
 typedef struct Expac {

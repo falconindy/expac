@@ -43,7 +43,6 @@
 #define DEFAULT_DELIM        "\n"
 #define DEFAULT_LISTDELIM    "  "
 #define DEFAULT_TIMEFMT      "%c"
-#define FORMAT_TOKENS        "BCDEGLMNOPRSVabdhmnprsuvw%"
 #define SIZE_TOKENS          "BKMGTPEZY\0"
 
 #ifndef PATH_MAX
@@ -58,7 +57,7 @@ bool opt_readone = false;
 bool opt_verbose = false;
 char opt_humansize = 'B';
 PackageCorpus opt_corpus = CORPUS_LOCAL;
-SearchWhat opt_what = 0;
+SearchWhat opt_what = SEARCH_EXACT;
 const char *opt_format = NULL;
 const char *opt_timefmt = DEFAULT_TIMEFMT;
 const char *opt_listdelim = DEFAULT_LISTDELIM;
@@ -188,7 +187,7 @@ static int parse_options(int argc, char *argv[]) {
         opt_delim = optarg;
         break;
       case 'g':
-        opt_what |= SEARCH_GROUPS;
+        opt_what = SEARCH_GROUPS;
         break;
       case 'l':
         opt_listdelim = optarg;
@@ -207,7 +206,7 @@ static int parse_options(int argc, char *argv[]) {
         opt_corpus = CORPUS_FILE;
         break;
       case 's':
-        opt_what |= SEARCH_REGEX;
+        opt_what = SEARCH_REGEX;
         break;
       case 't':
         opt_timefmt = optarg;
@@ -596,10 +595,9 @@ static alpm_list_t *search_groups(alpm_list_t *dbs, alpm_list_t *groupnames) {
 static alpm_list_t *search_exact(alpm_list_t *dblist, alpm_list_t *targets) {
   char *pkgname, *reponame;
   alpm_list_t *results = NULL;
-  alpm_list_t *t;
 
   /* resolve each target individually from the repo pool */
-  for (t = targets; t; t = t->next) {
+  for (alpm_list_t *t = targets; t; t = t->next) {
     alpm_pkg_t *pkg = NULL;
     alpm_list_t *r;
     int found = 0;
@@ -637,17 +635,13 @@ static alpm_list_t *resolve_targets(alpm_list_t *dblist, alpm_list_t *targets) {
   if (targets == NULL)
     return all_packages(dblist);
 
-  /* no method specified */
-  if ((opt_what & (_SEARCH_MAX - 1)) == 0)
-    return search_exact(dblist, targets);
-
-  if (opt_what & SEARCH_REGEX)
+  if (opt_what == SEARCH_REGEX)
     return search_packages(dblist, targets);
 
-  if (opt_what & SEARCH_GROUPS)
+  if (opt_what == SEARCH_GROUPS)
     return search_groups(dblist, targets);
 
-  return NULL;
+  return search_exact(dblist, targets);
 }
 
 void expac_free(Expac *expac) {
