@@ -17,9 +17,9 @@ expac_SOURCES = \
 	conf.c conf.h \
 	util.h
 
-expac: $(expac_SOURCES)
-
 all: expac doc
+
+expac: $(expac_SOURCES)
 
 doc: expac.1
 expac.1: README.pod
