@@ -52,7 +52,6 @@
 static char const digits[] = "0123456789";
 static char const printf_flags[] = "'-+ #0I";
 
-alpm_list_t *targets = NULL;
 bool opt_readone = false;
 bool opt_verbose = false;
 char opt_humansize = 'B';
@@ -148,7 +147,7 @@ static void usage(void) {
       "For more details see expac(1).\n");
 }
 
-static int parse_options(int argc, char *argv[]) {
+static int parse_options(int *argc, char **argv[]) {
   static struct option opts[] = {
     {"readone",   no_argument,        0, '1'},
     {"delim",     required_argument,  0, 'd'},
@@ -169,7 +168,7 @@ static int parse_options(int argc, char *argv[]) {
   for (;;) {
     int opt;
 
-    opt = getopt_long(argc, argv, "1l:d:gH:hf:pQSst:v", opts, NULL);
+    opt = getopt_long(*argc, *argv, "1l:d:gH:hf:pQSst:v", opts, NULL);
     if (opt < 0)
       break;
 
@@ -225,15 +224,15 @@ static int parse_options(int argc, char *argv[]) {
     }
   }
 
-  if (optind < argc)
-    opt_format = argv[optind++];
+  if (optind < *argc)
+    opt_format = (*argv)[optind++];
   else {
     fprintf(stderr, "error: missing format string (use -h for help)\n");
     return -EINVAL;
   }
 
-  while (optind < argc)
-    targets = alpm_list_add(targets, argv[optind++]);
+  *argc -= optind;
+  *argv += optind;
 
   return 0;
 }
@@ -736,13 +735,26 @@ alpm_list_t *expac_search(Expac *expac, PackageCorpus corpus, alpm_list_t *targe
   return NULL;
 }
 
+alpm_list_t *process_targets(int argc, char **argv) {
+  alpm_list_t *r = NULL;
+
+  for (int i = 0; i < argc; ++i)
+    r = alpm_list_add(r, argv[i]);
+
+  return r;
+}
+
 int main(int argc, char *argv[]) {
-  alpm_list_t *results = NULL;
+  alpm_list_t *results = NULL, *targets = NULL;
   Expac *expac;
   int r;
 
-  r = parse_options(argc, argv);
+  r = parse_options(&argc, &argv);
   if (r < 0)
+    return 1;
+
+  targets = process_targets(argc, argv);
+  if (targets == NULL)
     return 1;
 
   r = expac_new(&expac, opt_config_file);
