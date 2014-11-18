@@ -3,21 +3,21 @@
 
 #include <alpm.h>
 
-typedef enum PackageCorpus {
+typedef enum package_corpus_t {
   CORPUS_LOCAL,
   CORPUS_SYNC,
   CORPUS_FILE,
-} PackageCorpus;
+} package_corpus_t;
 
-typedef enum SearchWhat {
+typedef enum search_what_t {
   SEARCH_EXACT,
   SEARCH_GROUPS,
   SEARCH_REGEX,
-} SearchWhat;
+} search_what_t;
 
-typedef struct Expac {
+typedef struct expac_t {
   alpm_handle_t *alpm;
-} Expac;
+} expac_t;
 
 #endif  /* _EXPAC_H */
 

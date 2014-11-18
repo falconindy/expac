@@ -55,8 +55,8 @@ static char const printf_flags[] = "'-+ #0I";
 bool opt_readone = false;
 bool opt_verbose = false;
 char opt_humansize = 'B';
-PackageCorpus opt_corpus = CORPUS_LOCAL;
-SearchWhat opt_what = SEARCH_EXACT;
+package_corpus_t opt_corpus = CORPUS_LOCAL;
+search_what_t opt_what = SEARCH_EXACT;
 const char *opt_format = NULL;
 const char *opt_timefmt = DEFAULT_TIMEFMT;
 const char *opt_listdelim = DEFAULT_LISTDELIM;
@@ -643,15 +643,15 @@ static alpm_list_t *resolve_targets(alpm_list_t *dblist, alpm_list_t *targets) {
   return search_exact(dblist, targets);
 }
 
-static void expac_free(Expac *expac) {
+static void expac_free(expac_t *expac) {
   if (expac == NULL)
     return;
 
   alpm_release(expac->alpm);
 }
 
-static int expac_new(Expac **expac, const char *config_file) {
-  Expac *e;
+static int expac_new(expac_t **expac, const char *config_file) {
+  expac_t *e;
   enum _alpm_errno_t alpm_errno = 0;
   config_t config;
   const char *dbroot = "/";
@@ -688,7 +688,7 @@ static int expac_new(Expac **expac, const char *config_file) {
   return 0;
 }
 
-static alpm_list_t *expac_search_files(Expac *expac, alpm_list_t *targets) {
+static alpm_list_t *expac_search_files(expac_t *expac, alpm_list_t *targets) {
   alpm_list_t *i, *r = NULL;
 
   for (i = targets; i; i = i->next) {
@@ -707,7 +707,7 @@ static alpm_list_t *expac_search_files(Expac *expac, alpm_list_t *targets) {
   return r;
 }
 
-static alpm_list_t *expac_search_local(Expac *expac, alpm_list_t *targets) {
+static alpm_list_t *expac_search_local(expac_t *expac, alpm_list_t *targets) {
   alpm_list_t *dblist, *r;
 
   dblist = alpm_list_add(NULL, alpm_get_localdb(expac->alpm));
@@ -717,11 +717,11 @@ static alpm_list_t *expac_search_local(Expac *expac, alpm_list_t *targets) {
   return r;
 }
 
-static alpm_list_t *expac_search_sync(Expac *expac, alpm_list_t *targets) {
+static alpm_list_t *expac_search_sync(expac_t *expac, alpm_list_t *targets) {
   return resolve_targets(alpm_get_syncdbs(expac->alpm), targets);
 }
 
-static alpm_list_t *expac_search(Expac *expac, PackageCorpus corpus, alpm_list_t *targets) {
+static alpm_list_t *expac_search(expac_t *expac, package_corpus_t corpus, alpm_list_t *targets) {
   switch (corpus) {
   case CORPUS_LOCAL:
     return expac_search_local(expac, targets);
@@ -788,7 +788,7 @@ static alpm_list_t *process_targets(int argc, char **argv) {
 
 int main(int argc, char *argv[]) {
   alpm_list_t *results = NULL, *targets = NULL;
-  Expac *expac;
+  expac_t *expac;
   int r;
 
   r = parse_options(&argc, &argv);
