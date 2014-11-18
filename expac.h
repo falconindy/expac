@@ -19,8 +19,6 @@ typedef struct Expac {
   alpm_handle_t *alpm;
 } Expac;
 
-int expac_new(Expac **expac, const char *config_file);
-
 #endif  /* _EXPAC_H */
 
 /* vim: set et ts=2 sw=2: */

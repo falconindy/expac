@@ -643,14 +643,14 @@ static alpm_list_t *resolve_targets(alpm_list_t *dblist, alpm_list_t *targets) {
   return search_exact(dblist, targets);
 }
 
-void expac_free(Expac *expac) {
+static void expac_free(Expac *expac) {
   if (expac == NULL)
     return;
 
   alpm_release(expac->alpm);
 }
 
-int expac_new(Expac **expac, const char *config_file) {
+static int expac_new(Expac **expac, const char *config_file) {
   Expac *e;
   enum _alpm_errno_t alpm_errno = 0;
   config_t config;
@@ -688,7 +688,7 @@ int expac_new(Expac **expac, const char *config_file) {
   return 0;
 }
 
-alpm_list_t *expac_search_files(Expac *expac, alpm_list_t *targets) {
+static alpm_list_t *expac_search_files(Expac *expac, alpm_list_t *targets) {
   alpm_list_t *i, *r = NULL;
 
   for (i = targets; i; i = i->next) {
@@ -707,7 +707,7 @@ alpm_list_t *expac_search_files(Expac *expac, alpm_list_t *targets) {
   return r;
 }
 
-alpm_list_t *expac_search_local(Expac *expac, alpm_list_t *targets) {
+static alpm_list_t *expac_search_local(Expac *expac, alpm_list_t *targets) {
   alpm_list_t *dblist, *r;
 
   dblist = alpm_list_add(NULL, alpm_get_localdb(expac->alpm));
@@ -717,11 +717,11 @@ alpm_list_t *expac_search_local(Expac *expac, alpm_list_t *targets) {
   return r;
 }
 
-alpm_list_t *expac_search_sync(Expac *expac, alpm_list_t *targets) {
+static alpm_list_t *expac_search_sync(Expac *expac, alpm_list_t *targets) {
   return resolve_targets(alpm_get_syncdbs(expac->alpm), targets);
 }
 
-alpm_list_t *expac_search(Expac *expac, PackageCorpus corpus, alpm_list_t *targets) {
+static alpm_list_t *expac_search(Expac *expac, PackageCorpus corpus, alpm_list_t *targets) {
   switch (corpus) {
   case CORPUS_LOCAL:
     return expac_search_local(expac, targets);
@@ -735,11 +735,53 @@ alpm_list_t *expac_search(Expac *expac, PackageCorpus corpus, alpm_list_t *targe
   return NULL;
 }
 
-alpm_list_t *process_targets(int argc, char **argv) {
-  alpm_list_t *r = NULL;
+static int read_targets_from_file(FILE *in, alpm_list_t **targets) {
+  char line[BUFSIZ];
+  int i = 0, end = 0;
+  while(!end) {
+    line[i] = fgetc(in);
 
-  for (int i = 0; i < argc; ++i)
-    r = alpm_list_add(r, argv[i]);
+    if(line[i] == EOF)
+      end = 1;
+
+    if(isspace(line[i]) || end) {
+      line[i] = '\0';
+      /* avoid adding zero length arg, if multiple spaces separate args */
+      if(i > 0) {
+        if(!alpm_list_find_str(*targets, line))
+          *targets = alpm_list_add(*targets, strdup(line));
+        i = 0;
+      }
+    } else {
+      ++i;
+      if(i >= BUFSIZ) {
+        fprintf(stderr, "error: buffer overflow on stdin\n");
+        return -1;
+      }
+    }
+  }
+
+  return 0;
+}
+
+static alpm_list_t *process_targets(int argc, char **argv) {
+  alpm_list_t *r = NULL;
+  int allow_stdin;
+
+  allow_stdin = !isatty(STDIN_FILENO);
+
+  for (int i = 0; i < argc; ++i) {
+    if (allow_stdin && strcmp(argv[i], "-") == 0) {
+      int k;
+
+      k = read_targets_from_file(stdin, &r);
+      if (k < 0)
+        return NULL;
+
+      allow_stdin = 0;
+    } else
+      r = alpm_list_add(r, strdup(argv[i]));
+  }
 
   return r;
 }
@@ -768,6 +810,8 @@ int main(int argc, char *argv[]) {
   for (alpm_list_t *i = results; i; i = i->next)
     print_pkg(i->data, opt_format);
 
+  alpm_list_free_inner(targets, free);
+  alpm_list_free(targets);
   alpm_list_free(results);
   expac_free(expac);
 
