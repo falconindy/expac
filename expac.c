@@ -274,8 +274,11 @@ static int print_escaped(const char *delim) {
         case '0':
           fputc('\0', stdout);
           break;
-        ++out;
+        default:
+          fputc(*f, stdout);
+          break;
       }
+      ++out;
     } else {
       fputc(*f, stdout);
       ++out;
@@ -407,21 +410,23 @@ static alpm_list_t *get_validation_method(alpm_pkg_t *pkg) {
   return validation;
 }
 
-static int print_pkg(alpm_pkg_t *pkg, const char *format) {
+static void print_pkg(alpm_pkg_t *pkg, const char *format) {
   const char *f, *end;
-  int len, out = 0;
+  int out = 0;
 
   end = format + strlen(format);
 
   for (f = format; f < end; f++) {
-    len = 0;
     if (*f == '%') {
-      char fmt[64];
-      len = strspn(f + 1 + len, printf_flags);
-      len += strspn(f + 1 + len, digits);
-      snprintf(fmt, len + 3, "%ss", f);
-      fmt[len + 1] = 's';
-      f += len + 1;
+      char fmt[64] = {0};
+      int l = 1;
+
+      l += strspn(f + l, printf_flags);
+      l += strspn(f + l, digits);
+      memcpy(fmt, f, l);
+      fmt[l] = 's';
+
+      f += l;
       switch (*f) {
         /* simple attributes */
         case 'f': /* filename */
@@ -445,7 +450,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
         case 's': /* md5sum */
           out += printf(fmt, alpm_pkg_get_md5sum(pkg));
           break;
-        case 'a': /* architecutre */
+        case 'a': /* architecture */
           out += printf(fmt, alpm_pkg_get_arch(pkg));
           break;
         case 'i': /* has install scriptlet? */
@@ -552,8 +557,6 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   /* only print a delimeter if any package data was outputted */
   if (out > 0)
     print_escaped(opt_delim);
-
-  return !out;
 }
 
 static alpm_list_t *all_packages(alpm_list_t *dbs) {
