@@ -711,7 +711,7 @@ static alpm_list_t *expac_search_local(expac_t *expac, alpm_list_t *targets) {
   alpm_list_t *dblist, *r;
 
   dblist = alpm_list_add(NULL, alpm_get_localdb(expac->alpm));
-  r = resolve_targets(alpm_list_add(NULL, alpm_get_localdb(expac->alpm)), targets);
+  r = resolve_targets(dblist, targets);
   alpm_list_free(dblist);
 
   return r;
