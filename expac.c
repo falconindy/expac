@@ -409,7 +409,6 @@ static alpm_list_t *get_validation_method(alpm_pkg_t *pkg) {
 
 static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   const char *f, *end;
-  char fmt[64], buf[64];
   int len, out = 0;
 
   end = format + strlen(format);
@@ -417,6 +416,7 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
   for (f = format; f < end; f++) {
     len = 0;
     if (*f == '%') {
+      char fmt[64];
       len = strspn(f + 1 + len, printf_flags);
       len += strspn(f + 1 + len, digits);
       snprintf(fmt, len + 3, "%ss", f);
@@ -458,8 +458,8 @@ static int print_pkg(alpm_pkg_t *pkg, const char *format) {
           out += printf(fmt, alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
           break;
         case '!': /* result number */
-          snprintf(buf, sizeof(buf), "%d", opt_pkgcounter++);
-          out += printf(fmt, buf);
+          fmt[strlen(fmt)-1] = 'd';
+          out += printf(fmt, opt_pkgcounter++);
           break;
         case 'g': /* base64 gpg sig */
           out += printf(fmt, alpm_pkg_get_base64_sig(pkg));
