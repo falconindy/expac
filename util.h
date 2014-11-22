@@ -1,7 +1,6 @@
 #ifndef _UTIL_H
 #define _UTIL_H
 
-#include <glob.h>
 #include <stdio.h>
 #include <stdlib.h>
 
