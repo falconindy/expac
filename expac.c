@@ -136,7 +136,7 @@ static void usage(void)
       "Usage: expac [options] <format> target...\n\n", VERSION);
   fprintf(stderr,
       " Options:\n"
-      "  -Q, --local               search local DB (default)\n"
+      "  -Q, --query               search local DB (default)\n"
       "  -S, --sync                search sync DBs\n"
       "  -s, --search              search for matching regex\n"
       "  -g, --group               return packages matching targets as groups\n"
