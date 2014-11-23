@@ -95,12 +95,6 @@ static int parse_include(config_t *config, const char *include, char **section) 
   return r;
 }
 
-static char *split_keyval(char *line, const char *sep)
-{
-  strsep(&line, sep);
-  return line;
-}
-
 static int parse_one_file(config_t *config, const char *filename, char **section)
 {
   _cleanup_(fclosep) FILE *fp = NULL;
@@ -157,9 +151,9 @@ static int parse_one_file(config_t *config, const char *filename, char **section
     }
 
     if(in_options && memchr(line, '=', len)) {
-      char *val;
+      char *val = line;
 
-      val = split_keyval(line, "=");
+      strsep(&val, "=");
       strtrim(line);
 
       if(strcmp(line, "Include") == 0) {
