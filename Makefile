@@ -12,29 +12,32 @@ LDLIBS    = -lalpm
 
 DISTFILES = expac.c README.pod
 
-expac_SOURCES = \
+all: expac doc
+
+expac: \
 	expac.c \
 	conf.c conf.h \
 	util.h
-
-all: expac doc
-
-expac: $(expac_SOURCES)
 
 doc: expac.1
 expac.1: README.pod
 	pod2man --section=1 --center="expac manual" --name="EXPAC" --release="expac $(VERSION)" $< $@
 
 install: expac
-	install -D -m755 expac $(DESTDIR)$(PREFIX)/bin/expac
-	install -D -m644 expac.1 $(DESTDIR)$(MANPREFIX)/man1/expac.1
+	install -Dm755 expac $(DESTDIR)$(PREFIX)/bin/expac
+	install -Dm644 expac.1 $(DESTDIR)$(MANPREFIX)/man1/expac.1
 
+expac-$(VERSION).tar.gz: dist
 dist: clean
 	mkdir expac-$(VERSION)
 	cp $(DISTFILES) expac-$(VERSION)
 	sed "s/^VERSION = .*/VERSION = $(VERSION)/" Makefile > expac-$(VERSION)/Makefile
 	tar cf - expac-$(VERSION) | gzip -9 > expac-$(VERSION).tar.gz
 	rm -rf expac-$(VERSION)
+
+upload: expac-$(VERSION).tar.gz
+	gpg --detach-sign expac-$(VERSION).tar.gz
+	scp expac-$(VERSION).tar.gz expac-$(VERSION).tar.gz.sig code.falconindy.com:archive/expac/
 
 clean:
 	$(RM) *.o expac expac.1
