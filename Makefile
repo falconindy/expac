@@ -10,7 +10,7 @@ CPPFLAGS := -DVERSION=\"$(VERSION)\" -D_GNU_SOURCE $(CPPFLAGS)
 CFLAGS   := -std=c11 -g -pedantic -Wall -Wextra -Wno-missing-field-initializers $(CFLAGS)
 LDLIBS    = -lalpm
 
-DISTFILES = expac.c README.pod
+DISTFILES = expac.c expac.h conf.c conf.h util.h README.pod
 
 all: expac doc
 
