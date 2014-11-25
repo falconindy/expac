@@ -848,9 +848,6 @@ int main(int argc, char *argv[])
   }
 
   targets = process_targets(argc, argv);
-  if(targets == NULL) {
-    return 1;
-  }
 
   r = expac_new(&expac, opt_config_file);
   if(r < 0) {
