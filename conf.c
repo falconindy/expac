@@ -155,11 +155,10 @@ static int parse_one_file(config_t *config, const char *filename, char **section
 
       strsep(&val, "=");
       strtrim(line);
+      strtrim(val);
 
       if(strcmp(line, "Include") == 0) {
         int k;
-
-        strtrim(val);
 
         k = parse_include(config, val, section);
         if(k < 0) {
