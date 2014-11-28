@@ -120,7 +120,9 @@ static char *format_optdep(alpm_depend_t *optdep)
 {
   char *out = NULL;
 
-  asprintf(&out, "%s: %s", optdep->name, optdep->desc);
+  if(asprintf(&out, "%s: %s", optdep->name, optdep->desc) < 0) {
+    return NULL;
+  }
 
   return out;
 }
