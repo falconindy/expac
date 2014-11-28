@@ -839,7 +839,7 @@ static alpm_list_t *process_targets(int argc, char **argv)
 int main(int argc, char *argv[])
 {
   alpm_list_t *results = NULL, *targets = NULL;
-  expac_t *expac;
+  expac_t *expac = NULL;
   int r;
 
   r = parse_options(&argc, &argv);

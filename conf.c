@@ -36,7 +36,7 @@ static size_t strtrim(char *str)
   return right - left;
 }
 
-int is_section(const char *s, int n)
+static int is_section(const char *s, int n)
 {
   return s[0] == '[' && s[n-1] == ']';
 }
