@@ -450,6 +450,9 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
         case 'f': /* filename */
           out += printf(fmt, alpm_pkg_get_filename(pkg));
           break;
+        case 'e': /* package base */
+          out += printf(fmt, alpm_pkg_get_base(pkg));
+          break;
         case 'n': /* package name */
           out += printf(fmt, alpm_pkg_get_name(pkg));
           break;
