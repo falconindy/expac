@@ -124,6 +124,8 @@ The format argument allows the following interpreted sequences:
 
   %d    description
 
+  %e    package base
+
   %f    filename (only with -S)
 
   %g    base64 encoded PGP signature (only with -S)
