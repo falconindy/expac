@@ -361,7 +361,9 @@ static int print_filelist(alpm_filelist_t *filelist)
 
   for(i = 0; i < filelist->count; i++) {
     out += printf("%s", (filelist->files + i)->name);
-    out += print_escaped(opt_listdelim);
+    if(i < filelist->count - 1) {
+      out += print_escaped(opt_listdelim);
+    }
   }
 
   return out;
