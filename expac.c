@@ -532,7 +532,10 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
         case 'o': /* optdepends (shortdeps) */
           out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)alpm_dep_get_name);
           break;
-        case 'C': /* conflicts */
+        case 'H': /* conflicts */
+          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_compute_string);
+          break;
+        case 'C': /* conflicts (shortdeps) */
           out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_get_name);
           break;
         case 'S': /* provides (shortdeps) */

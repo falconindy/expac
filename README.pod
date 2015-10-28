@@ -92,7 +92,7 @@ The format argument allows the following interpreted sequences:
 
   %B    backup files
 
-  %C    conflicts with
+  %C    conflicts with (no version strings)
 
   %D    depends on
 
@@ -101,6 +101,8 @@ The format argument allows the following interpreted sequences:
   %F    files (only with -Q)
 
   %G    groups
+
+  %H    conflicts with
 
   %L    licenses
 
