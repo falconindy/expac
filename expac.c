@@ -203,7 +203,7 @@ static int parse_options(int *argc, char **argv[])
       case 'H':
         if(!is_valid_size_unit(optarg)) {
           fprintf(stderr, "error: invalid SI size formatter: %s\n", optarg);
-          return 1;
+          return -1;
         }
         opt_humansize = *optarg;
         break;
