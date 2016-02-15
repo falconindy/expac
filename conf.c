@@ -57,13 +57,15 @@ static int config_add_repo(config_t *config, char *reponame)
   /* grow when needed */
   if(config->size == config->capacity) {
     void *ptr;
+    const size_t newcap = config->capacity * 2.5;
 
-    ptr = realloc(config->repos, config->capacity * 2.5 * sizeof(char*));
+    ptr = realloc(config->repos, newcap * sizeof(char*));
     if(ptr == NULL) {
       return -ENOMEM;
     }
 
     config->repos = ptr;
+    config->capacity = newcap;
   }
 
   config->repos[config->size] = strdup(reponame);
