@@ -173,7 +173,7 @@ static int parse_one_file(config_t *config, const char *filename, char **section
         }
       } else if(strcmp(line, "RootDir") == 0) {
         config->dbroot = strdup(val);
-        if(config->dbpath == NULL) {
+        if(config->dbroot == NULL) {
           return -ENOMEM;
         }
       }
