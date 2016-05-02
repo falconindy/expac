@@ -794,7 +794,8 @@ static alpm_list_t *expac_search(expac_t *expac, package_corpus_t corpus, alpm_l
 static int read_targets_from_file(FILE *in, alpm_list_t **targets)
 {
   char line[BUFSIZ];
-  int i = 0, end = 0;
+  int i = 0, end = 0, targets_added = 0;
+
   while(!end) {
     line[i] = fgetc(in);
 
@@ -805,9 +806,11 @@ static int read_targets_from_file(FILE *in, alpm_list_t **targets)
       line[i] = '\0';
       /* avoid adding zero length arg, if multiple spaces separate args */
       if(i > 0) {
-        if(!alpm_list_find_str(*targets, line))
+        if(!alpm_list_find_str(*targets, line)) {
           *targets = alpm_list_add(*targets, strdup(line));
+        }
         i = 0;
+        ++targets_added;
       }
     } else {
       ++i;
@@ -818,12 +821,11 @@ static int read_targets_from_file(FILE *in, alpm_list_t **targets)
     }
   }
 
-  return 0;
+  return targets_added;
 }
 
-static alpm_list_t *process_targets(int argc, char **argv)
+static int process_targets(int argc, char **argv, alpm_list_t **targets)
 {
-  alpm_list_t *r = NULL;
   int allow_stdin;
 
   allow_stdin = !isatty(STDIN_FILENO);
@@ -832,18 +834,23 @@ static alpm_list_t *process_targets(int argc, char **argv)
     if(allow_stdin && strcmp(argv[i], "-") == 0) {
       int k;
 
-      k = read_targets_from_file(stdin, &r);
+      k = read_targets_from_file(stdin, targets);
       if(k < 0) {
-        return NULL;
+        return k;
+      }
+
+      if(k == 0) {
+        fputs("error: argument '-' specified with empty stdin\n", stderr);
+        return -1;
       }
 
       allow_stdin = 0;
     } else {
-      r = alpm_list_add(r, strdup(argv[i]));
+      *targets = alpm_list_add(*targets, strdup(argv[i]));
     }
   }
 
-  return r;
+  return 0;
 }
 
 int main(int argc, char *argv[])
@@ -857,7 +864,10 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  targets = process_targets(argc, argv);
+  r = process_targets(argc, argv, &targets);
+  if(r < 0) {
+    return 1;
+  }
 
   r = expac_new(&expac, opt_config_file);
   if(r < 0) {
