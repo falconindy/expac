@@ -115,6 +115,7 @@ static int parse_one_file(config_t *config, const char *filename, char **section
 
   for(;;) {
     ssize_t len;
+    char *val;
 
     errno = 0;
     len = getline(&line, &n, fp);
@@ -152,6 +153,20 @@ static int parse_one_file(config_t *config, const char *filename, char **section
       continue;
     }
 
+    val = line;
+    strsep(&val, "=");
+    strtrim(line);
+    strtrim(val);
+
+    if(strcmp(line, "Include") == 0) {
+      int k;
+
+      k = parse_include(config, val, section);
+      if(k < 0) {
+        return k;
+      }
+    }
+
     if(in_options && memchr(line, '=', len)) {
       char *val = line;
 
@@ -159,14 +174,7 @@ static int parse_one_file(config_t *config, const char *filename, char **section
       strtrim(line);
       strtrim(val);
 
-      if(strcmp(line, "Include") == 0) {
-        int k;
-
-        k = parse_include(config, val, section);
-        if(k < 0) {
-          return k;
-        }
-      } else if(strcmp(line, "DBPath") == 0) {
+      if(strcmp(line, "DBPath") == 0) {
         config->dbpath = strdup(val);
         if(config->dbpath == NULL) {
           return -ENOMEM;
