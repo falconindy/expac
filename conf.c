@@ -102,11 +102,9 @@ static int parse_one_file(config_t *config, const char *filename, char **section
   _cleanup_(fclosep) FILE *fp = NULL;
   _cleanup_free_ char *line = NULL;
   size_t n = 0;
-  int in_options = 0;
+  int in_options;
 
-  if(*section) {
-    in_options = strcmp(*section, "options") == 0;
-  }
+  in_options = *section && strcmp(*section, "options") == 0;
 
   fp = fopen(filename, "r");
   if(fp == NULL) {
@@ -167,13 +165,7 @@ static int parse_one_file(config_t *config, const char *filename, char **section
       }
     }
 
-    if(in_options && memchr(line, '=', len)) {
-      char *val = line;
-
-      strsep(&val, "=");
-      strtrim(line);
-      strtrim(val);
-
+    if(in_options) {
       if(strcmp(line, "DBPath") == 0) {
         config->dbpath = strdup(val);
         if(config->dbpath == NULL) {

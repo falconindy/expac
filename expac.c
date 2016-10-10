@@ -726,6 +726,7 @@ static int expac_new(expac_t **expac, const char *config_file)
 
   e->alpm = alpm_initialize(dbroot, dbpath, &alpm_errno);
   if(!e->alpm) {
+    fprintf(stderr, "error: failed to initialize alpm: %s\n", alpm_strerror(alpm_errno));
     return -alpm_errno;
   }
 
