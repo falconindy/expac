@@ -626,12 +626,11 @@ static alpm_list_t *search_groups(alpm_list_t *dbs, alpm_list_t *groupnames)
 
 static alpm_list_t *search_exact(alpm_list_t *dblist, alpm_list_t *targets)
 {
-  char *pkgname, *reponame;
   alpm_list_t *results = NULL;
 
   /* resolve each target individually from the repo pool */
   for(alpm_list_t *t = targets; t; t = t->next) {
-    alpm_pkg_t *pkg = NULL;
+    char *pkgname, *reponame;
     alpm_list_t *r;
     int found = 0;
 
@@ -644,6 +643,7 @@ static alpm_list_t *search_exact(alpm_list_t *dblist, alpm_list_t *targets)
 
     for(r = dblist; r; r = r->next) {
       alpm_db_t *repo = r->data;
+      alpm_pkg_t *pkg;
 
       if(reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
         continue;
