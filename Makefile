@@ -37,7 +37,7 @@ dist: clean
 
 upload: expac-$(VERSION).tar.gz
 	gpg --detach-sign expac-$(VERSION).tar.gz
-	scp expac-$(VERSION).tar.gz expac-$(VERSION).tar.gz.sig code.falconindy.com:archive/expac/
+	scp expac-$(VERSION).tar.gz expac-$(VERSION).tar.gz.sig pkgbuild.com:public_html/sources/expac/
 
 clean:
 	$(RM) *.o expac expac.1
