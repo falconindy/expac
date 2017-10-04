@@ -42,7 +42,7 @@
 
 #define DEFAULT_DELIM        "\n"
 #define DEFAULT_LISTDELIM    "  "
-#define DEFAULT_TIMEFMT      "%c"
+#define DEFAULT_TIMEFMT      "%FT%T"
 #define SIZE_TOKENS          "BKMGTPEZY\0"
 
 #ifndef PATH_MAX
@@ -147,7 +147,7 @@ static void usage(void)
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
       "  -p, --file                query local files instead of the DB\n"
-      "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n"
+      "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%FT%%T\")\n"
       "      --config <file>       read from <file> for alpm initialization (default: /etc/pacman.conf)\n\n"
       "  -v, --verbose             be more verbose\n\n"
       "  -h, --help                display this help and exit\n\n"
