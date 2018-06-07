@@ -549,8 +549,11 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
         case 'P': /* provides */
           out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_compute_string);
           break;
-        case 'R': /* replaces */
+        case 'R': /* replaces (shortdeps) */
           out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_get_name);
+          break;
+        case 'T': /* replaces */
+          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_compute_string);
           break;
         case 'B': /* backup */
           out += print_list(alpm_pkg_get_backup(pkg), (extractfn)alpm_backup_get_name);
