@@ -114,7 +114,9 @@ The format argument allows the following interpreted sequences:
 
   %P    provides
 
-  %R    replaces
+  %R    replaces (no version strings)
+
+  %T    replaces
 
   %S    provides (no version strings)
 
