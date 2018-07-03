@@ -798,12 +798,13 @@ static alpm_list_t *expac_search(expac_t *expac, package_corpus_t corpus, alpm_l
 static int read_targets_from_file(FILE *in, alpm_list_t **targets)
 {
   char line[BUFSIZ];
-  int i = 0, end = 0, targets_added = 0;
+  int c, i = 0, end = 0, targets_added = 0;
 
   while(!end) {
-    line[i] = fgetc(in);
+    c = fgetc(in);
+    line[i] = c;
 
-    if(line[i] == EOF)
+    if(c == EOF)
       end = 1;
 
     if(isspace(line[i]) || end) {
