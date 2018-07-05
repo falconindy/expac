@@ -803,7 +803,7 @@ static int read_targets_from_file(FILE *in, alpm_list_t **targets)
   while(!end) {
     line[i] = fgetc(in);
 
-    if(line[i] == EOF)
+    if(feof(in))
       end = 1;
 
     if(isspace(line[i]) || end) {
