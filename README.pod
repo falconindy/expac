@@ -47,7 +47,7 @@ Read from I<file> for alpm initialization instead of I</etc/pacman.conf>.
 
 =item B<-H, --humansize> <size>
 
-Format package sizes in SI units according to I<size>. Valid options are:
+Format package sizes in IEC units according to I<size>. Valid options are:
 
   B, K, M, G, T, P, E, Z, Y
 

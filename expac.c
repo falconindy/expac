@@ -142,7 +142,7 @@ static void usage(void)
       "  -S, --sync                search sync DBs\n"
       "  -s, --search              search for matching regex\n"
       "  -g, --group               return packages matching targets as groups\n"
-      "  -H, --humansize <size>    format package sizes in SI units (default: bytes)\n"
+      "  -H, --humansize <size>    format package sizes in IEC units (default: bytes)\n"
       "  -1, --readone             return only the first result of a sync search\n\n"
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
@@ -202,7 +202,7 @@ static int parse_options(int *argc, char **argv[])
         break;
       case 'H':
         if(!is_valid_size_unit(optarg)) {
-          fprintf(stderr, "error: invalid SI size formatter: %s\n", optarg);
+          fprintf(stderr, "error: invalid IEC size formatter: %s\n", optarg);
           return -1;
         }
         opt_humansize = *optarg;
