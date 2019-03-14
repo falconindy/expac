@@ -73,7 +73,7 @@ Interpret targets as paths to local files.
 =item B<-t, --timefmt> <format>
 
 Output time described by the specified I<format>. This string is passed directly
-to strftime(3). The default format is %c.
+to strftime(3). The default format is %FT%T.
 
 =item B<-v, --verbose>
 
@@ -184,7 +184,7 @@ List the oldest 10 installed packages (by build date):
 
 =over 4
 
-  $ expac --timefmt=%s '%b\t%n' | sort -n | head -10
+  $ expac '%b\t%n' | sort | head -10
 
 =back
 
