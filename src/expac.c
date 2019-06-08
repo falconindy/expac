@@ -135,7 +135,7 @@ static const char *alpm_dep_get_name(alpm_depend_t *dep)
 static void usage(void)
 {
   fprintf(stderr, "expac %s\n"
-      "Usage: expac [options] <format> target...\n\n", VERSION);
+      "Usage: expac [options] <format> target...\n\n", PACKAGE_VERSION);
   fprintf(stderr,
       " Options:\n"
       "  -Q, --query               search local DB (default)\n"
