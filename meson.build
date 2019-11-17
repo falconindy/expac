@@ -19,9 +19,9 @@ add_project_arguments('-include', 'config.h', language : 'c')
 executable(
   'expac',
   files('''
-	src/expac.c
-	src/conf.c src/conf.h
-	src/util.h
+    src/expac.c
+    src/conf.c src/conf.h
+    src/util.h
   '''.split()),
   dependencies : [
     dependency('libalpm')
