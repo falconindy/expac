@@ -80,6 +80,10 @@ to strftime(3). The default format is %c.
 Output more. `Package not found' errors will be shown, and empty field values
 will display as 'None'.
 
+=item B<-V, --version>
+
+Display version information and quit.
+
 =item B<-h, --help>
 
 Display the help message and quit.

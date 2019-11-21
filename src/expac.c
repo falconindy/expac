@@ -134,9 +134,9 @@ static const char *alpm_dep_get_name(alpm_depend_t *dep)
 
 static void usage(void)
 {
-  fprintf(stderr, "expac %s\n"
+  printf("expac %s\n"
       "Usage: expac [options] <format> target...\n\n", PACKAGE_VERSION);
-  fprintf(stderr,
+  printf(
       " Options:\n"
       "  -Q, --query               search local DB (default)\n"
       "  -S, --sync                search sync DBs\n"
@@ -150,8 +150,14 @@ static void usage(void)
       "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n"
       "      --config <file>       read from <file> for alpm initialization (default: /etc/pacman.conf)\n\n"
       "  -v, --verbose             be more verbose\n\n"
+      "  -V, --version             display version information and exit\n"
       "  -h, --help                display this help and exit\n\n"
       "For more details see expac(1).\n");
+}
+
+static void version(void)
+{
+  printf("%s %s\n", program_invocation_short_name, PACKAGE_VERSION);
 }
 
 static int parse_options(int *argc, char **argv[])
@@ -169,6 +175,7 @@ static int parse_options(int *argc, char **argv[])
     {"search",    no_argument,        0, 's'},
     {"timefmt",   required_argument,  0, 't'},
     {"verbose",   no_argument,        0, 'v'},
+    {"version",   no_argument,        0, 'V'},
     {"config",    required_argument,  0, 128},
     {0, 0, 0, 0}
   };
@@ -176,7 +183,7 @@ static int parse_options(int *argc, char **argv[])
   for(;;) {
     int opt;
 
-    opt = getopt_long(*argc, *argv, "1l:d:gH:hf:pQSst:v", opts, NULL);
+    opt = getopt_long(*argc, *argv, "1l:d:gH:hf:pQSst:Vv", opts, NULL);
     if(opt < 0) {
       break;
     }
@@ -218,6 +225,10 @@ static int parse_options(int *argc, char **argv[])
         break;
       case 't':
         opt_timefmt = optarg;
+        break;
+      case 'V':
+        version();
+        exit(0);
         break;
       case 'v':
         opt_verbose = true;
