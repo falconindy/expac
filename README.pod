@@ -90,51 +90,33 @@ Display the help message and quit.
 
 The format argument allows the following interpreted sequences:
 
+  %a    architecture
+
   %B    backup files
+
+  %b    build date
 
   %C    conflicts with (no version strings)
 
   %D    depends on
 
-  %E    depends on (no version strings)
-
-  %F    files (only with -Q)
-
-  %G    groups
-
-  %H    conflicts with
-
-  %L    licenses
-
-  %N    required by
-
-  %O    optional deps
-
-  %o    optional deps (no descriptions)
-
-  %P    provides
-
-  %R    replaces (no version strings)
-
-  %T    replaces
-
-  %S    provides (no version strings)
-
-  %a    architecture
-
-  %b    build date
-
   %d    description
+
+  %E    depends on (no version strings)
 
   %e    package base
 
   %f    filename (only with -S)
 
+  %F    files (only with -Q)
+
   %g    base64 encoded PGP signature (only with -S)
 
-  %h    sha256sum
+  %G    groups
 
-  %V    package validation method
+  %H    conflicts with
+
+  %h    sha256sum
 
   %i    has install scriptlet (only with -Q)
 
@@ -142,19 +124,37 @@ The format argument allows the following interpreted sequences:
 
   %l    install date (only with -Q)
 
+  %L    licenses
+
   %m    install size
 
   %M    modified backup files (only with -Q)
 
   %n    package name
 
+  %N    required by
+
+  %O    optional deps
+
+  %o    optional deps (no descriptions)
+
   %p    packager name
+
+  %P    provides
+
+  %R    replaces (no version strings)
 
   %r    repo
 
   %s    md5sum
 
+  %S    provides (no version strings)
+
+  %T    replaces
+
   %u    project URL
+
+  %V    package validation method
 
   %v    version
 
