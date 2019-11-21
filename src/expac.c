@@ -702,6 +702,11 @@ static void expac_free(expac_t *expac)
   }
 
   alpm_release(expac->alpm);
+  free(expac);
+}
+
+static void expac_freep(expac_t **expac) {
+  expac_free(*expac);
 }
 
 static int expac_new(expac_t **expac, const char *config_file)
@@ -866,7 +871,7 @@ static int process_targets(int argc, char **argv, alpm_list_t **targets)
 int main(int argc, char *argv[])
 {
   alpm_list_t *results = NULL, *targets = NULL;
-  expac_t *expac = NULL;
+  _cleanup_(expac_freep) expac_t *expac = NULL;
   int r;
 
   r = parse_options(&argc, &argv);
@@ -896,7 +901,6 @@ int main(int argc, char *argv[])
   alpm_list_free_inner(targets, free);
   alpm_list_free(targets);
   alpm_list_free(results);
-  expac_free(expac);
 
   return 0;
 }
