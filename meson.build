@@ -6,10 +6,21 @@ project('expac', 'c',
           'prefix=/usr',
         ])
 
+libalpm = dependency('libalpm')
+
 conf = configuration_data()
 conf.set('_GNU_SOURCE', true)
 conf.set_quoted('PACKAGE_NAME', meson.project_name())
 conf.set_quoted('PACKAGE_VERSION', meson.project_version())
+
+cc = meson.get_compiler('c')
+
+# TODO: remove this once pacman 5.3 is commonplace
+have_three_arg_db_search = cc.compiles('''
+   #include <alpm.h>
+   int main(void) { return alpm_db_search(NULL, NULL, NULL); }
+''', dependencies : [libalpm])
+conf.set('HAVE_THREE_ARG_DB_SEARCH', have_three_arg_db_search)
 
 configure_file(
     output : 'config.h',
@@ -24,7 +35,7 @@ executable(
     src/util.h
   '''.split()),
   dependencies : [
-    dependency('libalpm')
+    libalpm,
   ],
   install : true)
 
