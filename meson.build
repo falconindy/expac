@@ -1,5 +1,5 @@
 project('expac', 'c',
-        version : '9',
+        version : '10',
         license : 'MIT',
         default_options : [
           'c_std=c11',
