@@ -104,6 +104,10 @@ The format argument allows the following interpreted sequences:
 
   %H    conflicts with
 
+  %J    makedepends (chosen out of a hat)
+
+  %K    checkdepends (chosen out of a hat)
+
   %L    licenses
 
   %N    required by

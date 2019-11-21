@@ -528,6 +528,12 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
         case 'E': /* depends (shortdeps) */
           out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name);
           break;
+        case 'J': /* makedepends */
+          out += print_list(alpm_pkg_get_makedepends(pkg), (extractfn)alpm_dep_compute_string);
+          break;
+        case 'K': /* checkdepends */
+          out += print_list(alpm_pkg_get_checkdepends(pkg), (extractfn)alpm_dep_compute_string);
+          break;
         case 'D': /* depends */
           out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string);
           break;
