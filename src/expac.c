@@ -54,6 +54,7 @@ static char const printf_flags[] = "'-+ #0I";
 
 bool opt_readone = false;
 bool opt_verbose = false;
+bool opt_abortnone = false;
 char opt_humansize = 'B';
 package_corpus_t opt_corpus = CORPUS_LOCAL;
 search_what_t opt_what = SEARCH_EXACT;
@@ -147,6 +148,7 @@ static void usage(void)
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
       "  -p, --file                query local files instead of the DB\n"
+      "  -a, --abortnone           exit if no targets instead of querying everything\n"
       "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n"
       "      --config <file>       read from <file> for alpm initialization (default: /etc/pacman.conf)\n\n"
       "  -v, --verbose             be more verbose\n\n"
@@ -173,6 +175,7 @@ static int parse_options(int *argc, char **argv[])
     {"query",     no_argument,        0, 'Q'},
     {"sync",      no_argument,        0, 'S'},
     {"search",    no_argument,        0, 's'},
+    {"abortnone", no_argument,        0, 'a'},
     {"timefmt",   required_argument,  0, 't'},
     {"verbose",   no_argument,        0, 'v'},
     {"version",   no_argument,        0, 'V'},
@@ -183,7 +186,7 @@ static int parse_options(int *argc, char **argv[])
   for(;;) {
     int opt;
 
-    opt = getopt_long(*argc, *argv, "1l:d:gH:hf:pQSst:Vv", opts, NULL);
+    opt = getopt_long(*argc, *argv, "1l:d:gH:hf:pQSsat:Vv", opts, NULL);
     if(opt < 0) {
       break;
     }
@@ -222,6 +225,9 @@ static int parse_options(int *argc, char **argv[])
         break;
       case 's':
         opt_what = SEARCH_REGEX;
+        break;
+      case 'a':
+        opt_abortnone = true;
         break;
       case 't':
         opt_timefmt = optarg;
@@ -893,6 +899,9 @@ int main(int argc, char *argv[])
   r = process_targets(argc, argv, &targets);
   if(r < 0) {
     return 1;
+  }
+  if(!alpm_list_count(targets) && opt_abortnone) {
+    return 0;
   }
 
   r = expac_new(&expac, opt_config_file);
