@@ -43,12 +43,12 @@
 #define DEFAULT_DELIM        "\n"
 #define DEFAULT_LISTDELIM    "  "
 #define DEFAULT_TIMEFMT      "%c"
-#define SIZE_TOKENS          "BKMGTPEZY\0"
 
 #ifndef PATH_MAX
 #define PATH_MAX  4096
 #endif
 
+static char const size_tokens[] = "BKMGTPEZYRQ";
 static char const digits[] = "0123456789";
 static char const printf_flags[] = "'-+ #0I";
 
@@ -69,7 +69,7 @@ typedef const char *(*extractfn)(void*);
 static int is_valid_size_unit(char *u)
 {
   return u[0] != '\0' && u[1] == '\0' &&
-    memchr(SIZE_TOKENS, *u, strlen(SIZE_TOKENS)) != NULL;
+    memchr(size_tokens, *u, sizeof(size_tokens) - 1) != NULL;
 }
 
 static const char *alpm_backup_get_name(alpm_backup_t *bkup)
@@ -80,15 +80,14 @@ static const char *alpm_backup_get_name(alpm_backup_t *bkup)
 static double humanize_size(off_t bytes, const char target_unit,
     const char **label)
 {
-  static const char *labels[] = {"B", "KiB", "MiB", "GiB",
-    "TiB", "PiB", "EiB", "ZiB", "YiB"};
-  static const int unitcount = sizeof(labels) / sizeof(labels[0]);
+  static const int unitcount = sizeof(size_tokens) - 1;
+  static char label_buf[4];
 
   double val = (double)bytes;
   int index;
 
-  for(index = 0; index < unitcount - 1; index++) {
-    if(target_unit != '\0' && labels[index][0] == target_unit) {
+  for(index = 0; index < unitcount; index++) {
+    if(target_unit != '\0' && size_tokens[index] == target_unit) {
       break;
     } else if(target_unit == '\0' && val <= 2048.0 && val >= -2048.0) {
       break;
@@ -97,7 +96,8 @@ static double humanize_size(off_t bytes, const char target_unit,
   }
 
   if(label) {
-    *label = labels[index];
+    sprintf(label_buf, "%c%s", size_tokens[index], size_tokens[index] == 'B' ? "" : "iB");
+    *label = label_buf;
   }
 
   return val;
@@ -109,8 +109,12 @@ static char *size_to_string(off_t pkgsize)
 
   if(opt_humansize == 'B') {
     snprintf(out, sizeof(out), "%jd", (intmax_t)pkgsize);
-  } else {
+  } else if(opt_humansize) {
     snprintf(out, sizeof(out), "%.2f %ciB", humanize_size(pkgsize, opt_humansize, NULL), opt_humansize);
+  } else {
+    const char *unit = NULL;
+    const double n = humanize_size(pkgsize, opt_humansize, &unit);
+    snprintf(out, sizeof(out), "%.2f %s", n, unit);
   }
 
   return out;
@@ -142,7 +146,7 @@ static void usage(void)
       "  -S, --sync                search sync DBs\n"
       "  -s, --search              search for matching regex\n"
       "  -g, --group               return packages matching targets as groups\n"
-      "  -H, --humansize <size>    format package sizes in SI units (default: bytes)\n"
+      "  -H, --humansize <size>    format package sizes in SI units, or \"auto\"\n"
       "  -1, --readone             return only the first result of a sync search\n\n"
       "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
       "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
@@ -208,6 +212,10 @@ static int parse_options(int *argc, char **argv[])
         opt_listdelim = optarg;
         break;
       case 'H':
+        if(strcmp(optarg, "auto") == 0) {
+          opt_humansize = 0;
+          break;
+        }
         if(!is_valid_size_unit(optarg)) {
           fprintf(stderr, "error: invalid SI size formatter: %s\n", optarg);
           return -1;
