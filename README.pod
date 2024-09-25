@@ -49,7 +49,9 @@ Read from I<file> for alpm initialization instead of I</etc/pacman.conf>.
 
 Format package sizes in SI units according to I<size>. Valid options are:
 
-  B, K, M, G, T, P, E, Z, Y
+  B, K, M, G, T, P, E, Z, Y, R, Q
+
+You can also specify I<auto>, will determine a suitable unit for each result.
 
 =item B<-1, --readone>
 
