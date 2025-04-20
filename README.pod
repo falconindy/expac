@@ -106,6 +106,10 @@ The format argument allows the following interpreted sequences:
 
   %D    depends on
 
+  %J    make depends on
+
+  %K    check depends on
+
   %d    description
 
   %E    depends on (no version strings)
@@ -139,6 +143,8 @@ The format argument allows the following interpreted sequences:
   %n    package name
 
   %N    required by
+
+  %W    optional for
 
   %O    optional deps
 

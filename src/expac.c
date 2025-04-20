@@ -537,6 +537,9 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
         case 'N': /* requiredby */
           out += print_list(alpm_pkg_compute_requiredby(pkg), NULL);
           break;
+        case 'W': /* optionalfor */
+          out += print_list(alpm_pkg_compute_optionalfor(pkg), NULL);
+          break;
         case 'L': /* licenses */
           out += print_list(alpm_pkg_get_licenses(pkg), NULL);
           break;
@@ -545,6 +548,12 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
           break;
         case 'E': /* depends (shortdeps) */
           out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name);
+          break;
+        case 'J': /* makedepends */
+          out += print_list(alpm_pkg_get_makedepends(pkg), (extractfn)alpm_dep_compute_string);
+          break;
+        case 'K': /* checkdepends */
+          out += print_list(alpm_pkg_get_checkdepends(pkg), (extractfn)alpm_dep_compute_string);
           break;
         case 'D': /* depends */
           out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string);
