@@ -106,10 +106,6 @@ The format argument allows the following interpreted sequences:
 
   %D    depends on
 
-  %J    make depends on
-
-  %K    check depends on
-
   %d    description
 
   %E    depends on (no version strings)
@@ -130,6 +126,10 @@ The format argument allows the following interpreted sequences:
 
   %i    has install scriptlet (only with -Q)
 
+  %J    make depends on
+
+  %K    check depends on
+
   %k    download size (only with -S)
 
   %l    install date (only with -Q)
@@ -143,8 +143,6 @@ The format argument allows the following interpreted sequences:
   %n    package name
 
   %N    required by
-
-  %W    optional for
 
   %O    optional deps
 
@@ -169,6 +167,8 @@ The format argument allows the following interpreted sequences:
   %V    package validation method
 
   %v    version
+
+  %W    optional for
 
   %w    install reason (only with -Q)
 
