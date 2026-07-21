@@ -24,28 +24,29 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "expac.hh"
+
 #include <alpm.h>
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
 #include <glob.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#include "expac.h"
-#include "conf.h"
-#include "util.h"
+#include "conf.hh"
+#include "util.hh"
 
-#define DEFAULT_DELIM        "\n"
-#define DEFAULT_LISTDELIM    "  "
-#define DEFAULT_TIMEFMT      "%c"
+#define DEFAULT_DELIM "\n"
+#define DEFAULT_LISTDELIM "  "
+#define DEFAULT_TIMEFMT "%c"
 
 #ifndef PATH_MAX
-#define PATH_MAX  4096
+#define PATH_MAX 4096
 #endif
 
 static char const size_tokens[] = "BKMGTPEZYRQ";
@@ -57,61 +58,57 @@ bool opt_verbose = false;
 char opt_humansize = 'B';
 package_corpus_t opt_corpus = CORPUS_LOCAL;
 search_what_t opt_what = SEARCH_EXACT;
-const char *opt_format = NULL;
-const char *opt_timefmt = DEFAULT_TIMEFMT;
-const char *opt_listdelim = DEFAULT_LISTDELIM;
-const char *opt_delim = DEFAULT_DELIM;
-const char *opt_config_file = "/etc/pacman.conf";
+const char* opt_format = NULL;
+const char* opt_timefmt = DEFAULT_TIMEFMT;
+const char* opt_listdelim = DEFAULT_LISTDELIM;
+const char* opt_delim = DEFAULT_DELIM;
+const char* opt_config_file = "/etc/pacman.conf";
 int opt_pkgcounter = 0;
 
-typedef const char *(*extractfn)(void*);
+typedef const char* (*extractfn)(void*);
 
-static int is_valid_size_unit(char *u)
-{
+static int is_valid_size_unit(char* u) {
   return u[0] != '\0' && u[1] == '\0' &&
-    memchr(size_tokens, *u, sizeof(size_tokens) - 1) != NULL;
+         memchr(size_tokens, *u, sizeof(size_tokens) - 1) != NULL;
 }
 
-static const char *alpm_backup_get_name(alpm_backup_t *bkup)
-{
+static const char* alpm_backup_get_name(alpm_backup_t* bkup) {
   return bkup->name;
 }
 
 static double humanize_size(off_t bytes, const char target_unit,
-    const char **label)
-{
+                            const char** label) {
   static const int unitcount = sizeof(size_tokens) - 1;
   static char label_buf[4];
 
   double val = (double)bytes;
   int index;
 
-  for(index = 0; index < unitcount; index++) {
-    if(target_unit != '\0' && size_tokens[index] == target_unit) {
+  for (index = 0; index < unitcount; index++) {
+    if (target_unit != '\0' && size_tokens[index] == target_unit) {
       break;
-    } else if(target_unit == '\0' && val <= 2048.0 && val >= -2048.0) {
+    } else if (target_unit == '\0' && val <= 2048.0 && val >= -2048.0) {
       break;
     }
     val /= 1024.0;
   }
 
-  if(label) {
+  if (label) {
     sprintf(label_buf, "%c%s", size_tokens[index],
-        size_tokens[index] == 'B' ? "" : "iB");
+            size_tokens[index] == 'B' ? "" : "iB");
     *label = label_buf;
   }
 
   return val;
 }
 
-static char *size_to_string(off_t pkgsize)
-{
+static char* size_to_string(off_t pkgsize) {
   static char out[64];
 
-  if(opt_humansize == 'B') {
+  if (opt_humansize == 'B') {
     snprintf(out, sizeof(out), "%jd", (intmax_t)pkgsize);
   } else {
-    const char *unit = NULL;
+    const char* unit = NULL;
     const double n = humanize_size(pkgsize, opt_humansize, &unit);
     snprintf(out, sizeof(out), "%.2f %s", n, unit);
   }
@@ -119,75 +116,74 @@ static char *size_to_string(off_t pkgsize)
   return out;
 }
 
-static char *format_optdep(alpm_depend_t *optdep)
-{
-  char *out = NULL;
+static char* format_optdep(alpm_depend_t* optdep) {
+  char* out = NULL;
 
-  if(asprintf(&out, "%s: %s", optdep->name, optdep->desc) < 0) {
+  if (asprintf(&out, "%s: %s", optdep->name, optdep->desc) < 0) {
     return NULL;
   }
 
   return out;
 }
 
-static const char *alpm_dep_get_name(alpm_depend_t *dep)
-{
-  return dep->name;
-}
+static const char* alpm_dep_get_name(alpm_depend_t* dep) { return dep->name; }
 
-static void usage(void)
-{
-  printf("expac %s\n"
-      "Usage: expac [options] <format> target...\n\n", PACKAGE_VERSION);
+static void usage(void) {
+  printf(
+      "expac %s\n"
+      "Usage: expac [options] <format> target...\n\n",
+      PACKAGE_VERSION);
   printf(
       " Options:\n"
       "  -Q, --query               search local DB (default)\n"
       "  -S, --sync                search sync DBs\n"
       "  -s, --search              search for matching regex\n"
       "  -g, --group               return packages matching targets as groups\n"
-      "  -H, --humansize <size>    format package sizes in SI units, or \"auto\"\n"
-      "  -1, --readone             return only the first result of a sync search\n\n"
-      "  -d, --delim <string>      separator used between packages (default: \"\\n\")\n"
-      "  -l, --listdelim <string>  separator used between list elements (default: \"  \")\n"
+      "  -H, --humansize <size>    format package sizes in SI units, or "
+      "\"auto\"\n"
+      "  -1, --readone             return only the first result of a sync "
+      "search\n\n"
+      "  -d, --delim <string>      separator used between packages (default: "
+      "\"\\n\")\n"
+      "  -l, --listdelim <string>  separator used between list elements "
+      "(default: \"  \")\n"
       "  -p, --file                query local files instead of the DB\n"
-      "  -t, --timefmt <fmt>       date format passed to strftime (default: \"%%c\")\n"
-      "      --config <file>       read from <file> for alpm initialization (default: /etc/pacman.conf)\n\n"
+      "  -t, --timefmt <fmt>       date format passed to strftime (default: "
+      "\"%%c\")\n"
+      "      --config <file>       read from <file> for alpm initialization "
+      "(default: /etc/pacman.conf)\n\n"
       "  -v, --verbose             be more verbose\n\n"
       "  -V, --version             display version information and exit\n"
       "  -h, --help                display this help and exit\n\n"
       "For more details see expac(1).\n");
 }
 
-static void version(void)
-{
+static void version(void) {
   printf("%s %s\n", program_invocation_short_name, PACKAGE_VERSION);
 }
 
-static int parse_options(int *argc, char **argv[])
-{
-  static struct option opts[] = {
-    {"readone",   no_argument,        0, '1'},
-    {"delim",     required_argument,  0, 'd'},
-    {"listdelim", required_argument,  0, 'l'},
-    {"group",     required_argument,  0, 'g'},
-    {"help",      no_argument,        0, 'h'},
-    {"file",      no_argument,        0, 'p'},
-    {"humansize", required_argument,  0, 'H'},
-    {"query",     no_argument,        0, 'Q'},
-    {"sync",      no_argument,        0, 'S'},
-    {"search",    no_argument,        0, 's'},
-    {"timefmt",   required_argument,  0, 't'},
-    {"verbose",   no_argument,        0, 'v'},
-    {"version",   no_argument,        0, 'V'},
-    {"config",    required_argument,  0, 128},
-    {0, 0, 0, 0}
-  };
+static int parse_options(int* argc, char** argv[]) {
+  static struct option opts[] = {{"readone", no_argument, 0, '1'},
+                                 {"delim", required_argument, 0, 'd'},
+                                 {"listdelim", required_argument, 0, 'l'},
+                                 {"group", required_argument, 0, 'g'},
+                                 {"help", no_argument, 0, 'h'},
+                                 {"file", no_argument, 0, 'p'},
+                                 {"humansize", required_argument, 0, 'H'},
+                                 {"query", no_argument, 0, 'Q'},
+                                 {"sync", no_argument, 0, 'S'},
+                                 {"search", no_argument, 0, 's'},
+                                 {"timefmt", required_argument, 0, 't'},
+                                 {"verbose", no_argument, 0, 'v'},
+                                 {"version", no_argument, 0, 'V'},
+                                 {"config", required_argument, 0, 128},
+                                 {0, 0, 0, 0}};
 
-  for(;;) {
+  for (;;) {
     int opt;
 
     opt = getopt_long(*argc, *argv, "1l:d:gH:hf:pQSst:Vv", opts, NULL);
-    if(opt < 0) {
+    if (opt < 0) {
       break;
     }
 
@@ -211,11 +207,11 @@ static int parse_options(int *argc, char **argv[])
         opt_listdelim = optarg;
         break;
       case 'H':
-        if(strcmp(optarg, "auto") == 0) {
+        if (strcmp(optarg, "auto") == 0) {
           opt_humansize = '\0';
           break;
         }
-        if(!is_valid_size_unit(optarg)) {
+        if (!is_valid_size_unit(optarg)) {
           fprintf(stderr, "error: invalid SI size formatter: %s\n", optarg);
           return -1;
         }
@@ -251,7 +247,7 @@ static int parse_options(int *argc, char **argv[])
     }
   }
 
-  if(optind < *argc) {
+  if (optind < *argc) {
     opt_format = (*argv)[optind++];
   } else {
     fprintf(stderr, "error: missing format string (use -h for help)\n");
@@ -264,13 +260,12 @@ static int parse_options(int *argc, char **argv[])
   return 0;
 }
 
-static int print_escaped(const char *delim)
-{
-  const char *f;
+static int print_escaped(const char* delim) {
+  const char* f;
   int out = 0;
 
-  for(f = delim; *f != '\0'; f++) {
-    if(*f == '\\') {
+  for (f = delim; *f != '\0'; f++) {
+    if (*f == '\\') {
       switch (*++f) {
         case '\\':
           fputc('\\', stdout);
@@ -316,32 +311,31 @@ static int print_escaped(const char *delim)
   return out;
 }
 
-static int print_list(alpm_list_t *list, extractfn fn, bool free_items)
-{
-  alpm_list_t *i;
+static int print_list(alpm_list_t* list, extractfn fn, bool free_items) {
+  alpm_list_t* i;
   int out = 0;
 
-  if(!list) {
-    if(opt_verbose) {
+  if (!list) {
+    if (opt_verbose) {
       out += printf("None");
     }
     return out;
   }
 
   i = list;
-  for(;;) {
-    const char *item = fn ? fn(i->data) : i->data;
-    if(item == NULL) {
+  for (;;) {
+    const char* item = fn ? fn(i->data) : static_cast<const char*>(i->data);
+    if (item == NULL) {
       continue;
     }
 
     out += printf("%s", item);
 
-    if(free_items) {
-      free((void *)item);
+    if (free_items) {
+      free((void*)item);
     }
 
-    if((i = i->next)) {
+    if ((i = i->next)) {
       out += print_escaped(opt_listdelim);
     } else {
       break;
@@ -351,8 +345,8 @@ static int print_list(alpm_list_t *list, extractfn fn, bool free_items)
   return out;
 }
 
-static int print_allocated_list(alpm_list_t *list, extractfn fn, bool free_items)
-{
+static int print_allocated_list(alpm_list_t* list, extractfn fn,
+                                bool free_items) {
   int out = print_list(list, fn, free_items);
   alpm_list_free(list);
   return out;
@@ -362,8 +356,8 @@ static int print_time(time_t timestamp) {
   char buffer[64];
   int out = 0;
 
-  if(!timestamp) {
-    if(opt_verbose) {
+  if (!timestamp) {
+    if (opt_verbose) {
       out += printf("None");
     }
     return out;
@@ -376,14 +370,13 @@ static int print_time(time_t timestamp) {
   return out;
 }
 
-static int print_filelist(alpm_filelist_t *filelist)
-{
+static int print_filelist(alpm_filelist_t* filelist) {
   int out = 0;
   size_t i;
 
-  for(i = 0; i < filelist->count; i++) {
+  for (i = 0; i < filelist->count; i++) {
     out += printf("%s", (filelist->files + i)->name);
-    if(i < filelist->count - 1) {
+    if (i < filelist->count - 1) {
       out += print_escaped(opt_listdelim);
     }
   }
@@ -391,17 +384,16 @@ static int print_filelist(alpm_filelist_t *filelist)
   return out;
 }
 
-static bool backup_file_is_modified(const alpm_backup_t *backup_file)
-{
+static bool backup_file_is_modified(const alpm_backup_t* backup_file) {
   char fullpath[PATH_MAX];
-  _cleanup_free_ char *md5sum = NULL;
+  _cleanup_free_ char* md5sum = NULL;
   bool modified;
 
   /* TODO: respect expac->dbroot */
   snprintf(fullpath, sizeof(fullpath), "/%s", backup_file->name);
 
   md5sum = alpm_compute_md5sum(fullpath);
-  if(md5sum == NULL) {
+  if (md5sum == NULL) {
     return false;
   }
 
@@ -410,13 +402,12 @@ static bool backup_file_is_modified(const alpm_backup_t *backup_file)
   return modified;
 }
 
-static alpm_list_t *get_modified_files(alpm_pkg_t *pkg)
-{
+static alpm_list_t* get_modified_files(alpm_pkg_t* pkg) {
   alpm_list_t *i, *modified_files = NULL;
 
-  for(i = alpm_pkg_get_backup(pkg); i; i = i->next) {
-    const alpm_backup_t *backup = i->data;
-    if(backup->hash && backup_file_is_modified(backup)) {
+  for (i = alpm_pkg_get_backup(pkg); i; i = i->next) {
+    const alpm_backup_t* backup = static_cast<const alpm_backup_t*>(i->data);
+    if (backup->hash && backup_file_is_modified(backup)) {
       modified_files = alpm_list_add(modified_files, backup->name);
     }
   }
@@ -424,42 +415,41 @@ static alpm_list_t *get_modified_files(alpm_pkg_t *pkg)
   return modified_files;
 }
 
-static alpm_list_t *get_validation_method(alpm_pkg_t *pkg)
-{
-  alpm_list_t *validation = NULL;
+static alpm_list_t* get_validation_method(alpm_pkg_t* pkg) {
+  alpm_list_t* validation = NULL;
 
-  alpm_pkgvalidation_t v = alpm_pkg_get_validation(pkg);
+  alpm_pkgvalidation_t v =
+      static_cast<alpm_pkgvalidation_t>(alpm_pkg_get_validation(pkg));
 
-  if(v == ALPM_PKG_VALIDATION_UNKNOWN) {
-    return alpm_list_add(validation, "Unknown");
+  if (v == ALPM_PKG_VALIDATION_UNKNOWN) {
+    return alpm_list_add(validation, const_cast<char*>("Unknown"));
   }
 
-  if(v & ALPM_PKG_VALIDATION_NONE) {
-    return alpm_list_add(validation, "None");
+  if (v & ALPM_PKG_VALIDATION_NONE) {
+    return alpm_list_add(validation, const_cast<char*>("None"));
   }
 
-  if(v & ALPM_PKG_VALIDATION_MD5SUM) {
-    validation = alpm_list_add(validation, "MD5 Sum");
+  if (v & ALPM_PKG_VALIDATION_MD5SUM) {
+    validation = alpm_list_add(validation, const_cast<char*>("MD5 Sum"));
   }
-  if(v & ALPM_PKG_VALIDATION_SHA256SUM) {
-    validation = alpm_list_add(validation, "SHA256 Sum");
+  if (v & ALPM_PKG_VALIDATION_SHA256SUM) {
+    validation = alpm_list_add(validation, const_cast<char*>("SHA256 Sum"));
   }
-  if(v & ALPM_PKG_VALIDATION_SIGNATURE) {
-    validation = alpm_list_add(validation, "Signature");
+  if (v & ALPM_PKG_VALIDATION_SIGNATURE) {
+    validation = alpm_list_add(validation, const_cast<char*>("Signature"));
   }
 
   return validation;
 }
 
-static void print_pkg(alpm_pkg_t *pkg, const char *format)
-{
+static void print_pkg(alpm_pkg_t* pkg, const char* format) {
   const char *f, *end;
   int out = 0;
 
   end = format + strlen(format);
 
-  for(f = format; f < end; f++) {
-    if(*f == '%') {
+  for (f = format; f < end; f++) {
+    if (*f == '%') {
       char fmt[64] = {0};
       int l = 1;
 
@@ -505,10 +495,11 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
           out += printf(fmt, alpm_db_get_name(alpm_pkg_get_db(pkg)));
           break;
         case 'w': /* install reason */
-          out += printf(fmt, alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
+          out +=
+              printf(fmt, alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
           break;
         case '!': /* result number */
-          fmt[strlen(fmt)-1] = 'd';
+          fmt[strlen(fmt) - 1] = 'd';
           out += printf(fmt, opt_pkgcounter++);
           break;
         case 'g': /* base64 gpg sig */
@@ -541,10 +532,12 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
         case 'N': /* requiredby */
           /* compute_requiredby returns a freshly allocated list of
            * strdup'd names; free both the strings and the list nodes. */
-          out += print_allocated_list(alpm_pkg_compute_requiredby(pkg), NULL, true);
+          out += print_allocated_list(alpm_pkg_compute_requiredby(pkg), NULL,
+                                      true);
           break;
         case 'W': /* optionalfor */
-          out += print_allocated_list(alpm_pkg_compute_optionalfor(pkg), NULL, true);
+          out += print_allocated_list(alpm_pkg_compute_optionalfor(pkg), NULL,
+                                      true);
           break;
         case 'L': /* licenses */
           out += print_list(alpm_pkg_get_licenses(pkg), NULL, false);
@@ -553,43 +546,56 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
           out += print_list(alpm_pkg_get_groups(pkg), NULL, false);
           break;
         case 'E': /* depends (shortdeps) */
-          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_pkg_get_depends(pkg),
+                            (extractfn)alpm_dep_get_name, false);
           break;
         case 'J': /* makedepends */
-          out += print_list(alpm_pkg_get_makedepends(pkg), (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_pkg_get_makedepends(pkg),
+                            (extractfn)alpm_dep_compute_string, true);
           break;
         case 'K': /* checkdepends */
-          out += print_list(alpm_pkg_get_checkdepends(pkg), (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_pkg_get_checkdepends(pkg),
+                            (extractfn)alpm_dep_compute_string, true);
           break;
         case 'D': /* depends */
-          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_pkg_get_depends(pkg),
+                            (extractfn)alpm_dep_compute_string, true);
           break;
         case 'O': /* optdepends */
-          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)format_optdep, true);
+          out += print_list(alpm_pkg_get_optdepends(pkg),
+                            (extractfn)format_optdep, true);
           break;
         case 'o': /* optdepends (shortdeps) */
-          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_pkg_get_optdepends(pkg),
+                            (extractfn)alpm_dep_get_name, false);
           break;
         case 'H': /* conflicts */
-          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_pkg_get_conflicts(pkg),
+                            (extractfn)alpm_dep_compute_string, true);
           break;
         case 'C': /* conflicts (shortdeps) */
-          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_pkg_get_conflicts(pkg),
+                            (extractfn)alpm_dep_get_name, false);
           break;
         case 'S': /* provides (shortdeps) */
-          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_pkg_get_provides(pkg),
+                            (extractfn)alpm_dep_get_name, false);
           break;
         case 'P': /* provides */
-          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_pkg_get_provides(pkg),
+                            (extractfn)alpm_dep_compute_string, true);
           break;
         case 'R': /* replaces (shortdeps) */
-          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_pkg_get_replaces(pkg),
+                            (extractfn)alpm_dep_get_name, false);
           break;
         case 'T': /* replaces */
-          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_pkg_get_replaces(pkg),
+                            (extractfn)alpm_dep_compute_string, true);
           break;
         case 'B': /* backup */
-          out += print_list(alpm_pkg_get_backup(pkg), (extractfn)alpm_backup_get_name, false);
+          out += print_list(alpm_pkg_get_backup(pkg),
+                            (extractfn)alpm_backup_get_name, false);
           break;
         case 'V': /* package validation */
           out += print_allocated_list(get_validation_method(pkg), NULL, false);
@@ -606,8 +612,8 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
           out++;
           break;
       }
-    } else if(*f == '\\') {
-      char esc[3] = { f[0], f[1], '\0' };
+    } else if (*f == '\\') {
+      char esc[3] = {f[0], f[1], '\0'};
       out += print_escaped(esc);
       ++f;
     } else {
@@ -617,43 +623,43 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
   }
 
   /* only print a delimeter if any package data was outputted */
-  if(out > 0) {
+  if (out > 0) {
     print_escaped(opt_delim);
   }
 }
 
-static alpm_list_t *all_packages(alpm_list_t *dbs)
-{
+static alpm_list_t* all_packages(alpm_list_t* dbs) {
   alpm_list_t *i, *packages = NULL;
 
-  for(i = dbs; i; i = i->next) {
-    packages = alpm_list_join(packages, alpm_list_copy(alpm_db_get_pkgcache(i->data)));
+  for (i = dbs; i; i = i->next) {
+    packages = alpm_list_join(
+        packages,
+        alpm_list_copy(alpm_db_get_pkgcache(static_cast<alpm_db_t*>(i->data))));
   }
 
   return packages;
 }
 
-static alpm_list_t *search_packages(alpm_list_t *dbs, alpm_list_t *targets)
-{
+static alpm_list_t* search_packages(alpm_list_t* dbs, alpm_list_t* targets) {
   alpm_list_t *i, *packages = NULL;
 
-  for(i = dbs; i; i = i->next) {
-    alpm_list_t *results = NULL;
-    alpm_db_search(i->data, targets, &results);
+  for (i = dbs; i; i = i->next) {
+    alpm_list_t* results = NULL;
+    alpm_db_search(static_cast<alpm_db_t*>(i->data), targets, &results);
     packages = alpm_list_join(packages, results);
   }
 
   return packages;
 }
 
-static alpm_list_t *search_groups(alpm_list_t *dbs, alpm_list_t *groupnames)
-{
+static alpm_list_t* search_groups(alpm_list_t* dbs, alpm_list_t* groupnames) {
   alpm_list_t *i, *j, *packages = NULL;
 
-  for(i = groupnames; i; i = i->next) {
-    for(j = dbs; j; j = j->next) {
-      alpm_group_t *grp = alpm_db_get_group(j->data, i->data);
-      if(grp != NULL) {
+  for (i = groupnames; i; i = i->next) {
+    for (j = dbs; j; j = j->next) {
+      alpm_group_t* grp = alpm_db_get_group(static_cast<alpm_db_t*>(j->data),
+                                            static_cast<const char*>(i->data));
+      if (grp != NULL) {
         packages = alpm_list_join(packages, alpm_list_copy(grp->packages));
       }
     }
@@ -662,44 +668,43 @@ static alpm_list_t *search_groups(alpm_list_t *dbs, alpm_list_t *groupnames)
   return packages;
 }
 
-static alpm_list_t *search_exact(alpm_list_t *dblist, alpm_list_t *targets)
-{
-  alpm_list_t *results = NULL;
+static alpm_list_t* search_exact(alpm_list_t* dblist, alpm_list_t* targets) {
+  alpm_list_t* results = NULL;
 
   /* resolve each target individually from the repo pool */
-  for(alpm_list_t *t = targets; t; t = t->next) {
+  for (alpm_list_t* t = targets; t; t = t->next) {
     char *pkgname, *reponame;
-    alpm_list_t *r;
+    alpm_list_t* r;
     int found = 0;
 
-    pkgname = reponame = t->data;
-    if(strchr(pkgname, '/')) {
+    pkgname = reponame = static_cast<char*>(t->data);
+    if (strchr(pkgname, '/')) {
       strsep(&pkgname, "/");
     } else {
       reponame = NULL;
     }
 
-    for(r = dblist; r; r = r->next) {
-      alpm_db_t *repo = r->data;
-      alpm_pkg_t *pkg;
+    for (r = dblist; r; r = r->next) {
+      alpm_db_t* repo = static_cast<alpm_db_t*>(r->data);
+      alpm_pkg_t* pkg;
 
-      if(reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
+      if (reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
         continue;
       }
 
       pkg = alpm_db_get_pkg(repo, pkgname);
-      if(pkg == NULL) {
+      if (pkg == NULL) {
         continue;
       }
 
       found = 1;
       results = alpm_list_add(results, pkg);
-      if(opt_readone) {
+      if (opt_readone) {
         break;
       }
     }
 
-    if(!found && opt_verbose) {
+    if (!found && opt_verbose) {
       fprintf(stderr, "error: package `%s' not found\n", pkgname);
     }
   }
@@ -707,26 +712,24 @@ static alpm_list_t *search_exact(alpm_list_t *dblist, alpm_list_t *targets)
   return results;
 }
 
-static alpm_list_t *resolve_targets(alpm_list_t *dblist, alpm_list_t *targets)
-{
-  if(targets == NULL) {
+static alpm_list_t* resolve_targets(alpm_list_t* dblist, alpm_list_t* targets) {
+  if (targets == NULL) {
     return all_packages(dblist);
   }
 
-  if(opt_what == SEARCH_REGEX) {
+  if (opt_what == SEARCH_REGEX) {
     return search_packages(dblist, targets);
   }
 
-  if(opt_what == SEARCH_GROUPS) {
+  if (opt_what == SEARCH_GROUPS) {
     return search_groups(dblist, targets);
   }
 
   return search_exact(dblist, targets);
 }
 
-static void expac_free(expac_t *expac)
-{
-  if(expac == NULL) {
+static void expac_free(expac_t* expac) {
+  if (expac == NULL) {
     return;
   }
 
@@ -734,51 +737,49 @@ static void expac_free(expac_t *expac)
   free(expac);
 }
 
-static void expac_freep(expac_t **expac) {
-  expac_free(*expac);
-}
+static void expac_freep(expac_t** expac) { expac_free(*expac); }
 
-static void targets_freep(alpm_list_t **targets) {
+static void targets_freep(alpm_list_t** targets) {
   alpm_list_free_inner(*targets, free);
   alpm_list_free(*targets);
 }
 
-static int expac_new(expac_t **expac, const char *config_file)
-{
-  expac_t *e;
-  enum _alpm_errno_t alpm_errno = 0;
+static int expac_new(expac_t** expac, const char* config_file) {
+  expac_t* e;
+  enum _alpm_errno_t alpm_errno = static_cast<enum _alpm_errno_t>(0);
   config_t config;
-  const char *dbroot = "/";
-  const char *dbpath = "/var/lib/pacman";
+  const char* dbroot = "/";
+  const char* dbpath = "/var/lib/pacman";
   int r;
 
-  e = calloc(1, sizeof(*e));
-  if(e == NULL) {
+  e = static_cast<expac_t*>(calloc(1, sizeof(*e)));
+  if (e == NULL) {
     return -ENOMEM;
   }
 
   memset(&config, 0, sizeof(config));
 
   r = config_parse(&config, config_file);
-  if(r < 0) {
+  if (r < 0) {
     return r;
   }
 
-  if(config.dbpath) {
+  if (config.dbpath) {
     dbpath = config.dbpath;
   }
 
-  if(config.dbroot) {
+  if (config.dbroot) {
     dbroot = config.dbroot;
   }
 
   e->alpm = alpm_initialize(dbroot, dbpath, &alpm_errno);
-  if(!e->alpm) {
-    fprintf(stderr, "error: failed to initialize alpm: %s\n", alpm_strerror(alpm_errno));
+  if (!e->alpm) {
+    fprintf(stderr, "error: failed to initialize alpm: %s\n",
+            alpm_strerror(alpm_errno));
     return -alpm_errno;
   }
 
-  for(int i = 0; i < config.size; ++i) {
+  for (int i = 0; i < config.size; ++i) {
     alpm_register_syncdb(e->alpm, config.repos[i], 0);
   }
 
@@ -789,17 +790,16 @@ static int expac_new(expac_t **expac, const char *config_file)
   return 0;
 }
 
-static alpm_list_t *expac_search_files(expac_t *expac, alpm_list_t *targets)
-{
+static alpm_list_t* expac_search_files(expac_t* expac, alpm_list_t* targets) {
   alpm_list_t *i, *r = NULL;
 
-  for(i = targets; i; i = i->next) {
-    const char *path = i->data;
-    alpm_pkg_t *pkg;
+  for (i = targets; i; i = i->next) {
+    const char* path = static_cast<const char*>(i->data);
+    alpm_pkg_t* pkg;
 
-    if(alpm_pkg_load(expac->alpm, path, 0, 0, &pkg) != 0) {
+    if (alpm_pkg_load(expac->alpm, path, 0, 0, &pkg) != 0) {
       fprintf(stderr, "error: %s: %s\n", path,
-          alpm_strerror(alpm_errno(expac->alpm)));
+              alpm_strerror(alpm_errno(expac->alpm)));
       continue;
     }
 
@@ -809,8 +809,7 @@ static alpm_list_t *expac_search_files(expac_t *expac, alpm_list_t *targets)
   return r;
 }
 
-static alpm_list_t *expac_search_local(expac_t *expac, alpm_list_t *targets)
-{
+static alpm_list_t* expac_search_local(expac_t* expac, alpm_list_t* targets) {
   alpm_list_t *dblist, *r;
 
   dblist = alpm_list_add(NULL, alpm_get_localdb(expac->alpm));
@@ -820,42 +819,39 @@ static alpm_list_t *expac_search_local(expac_t *expac, alpm_list_t *targets)
   return r;
 }
 
-static alpm_list_t *expac_search_sync(expac_t *expac, alpm_list_t *targets)
-{
+static alpm_list_t* expac_search_sync(expac_t* expac, alpm_list_t* targets) {
   return resolve_targets(alpm_get_syncdbs(expac->alpm), targets);
 }
 
-static alpm_list_t *expac_search(expac_t *expac, package_corpus_t corpus, alpm_list_t *targets)
-{
+static alpm_list_t* expac_search(expac_t* expac, package_corpus_t corpus,
+                                 alpm_list_t* targets) {
   switch (corpus) {
-  case CORPUS_LOCAL:
-    return expac_search_local(expac, targets);
-  case CORPUS_SYNC:
-    return expac_search_sync(expac, targets);
-  case CORPUS_FILE:
-    return expac_search_files(expac, targets);
+    case CORPUS_LOCAL:
+      return expac_search_local(expac, targets);
+    case CORPUS_SYNC:
+      return expac_search_sync(expac, targets);
+    case CORPUS_FILE:
+      return expac_search_files(expac, targets);
   }
 
   /* should be unreachable */
   return NULL;
 }
 
-static int read_targets_from_file(FILE *in, alpm_list_t **targets)
-{
+static int read_targets_from_file(FILE* in, alpm_list_t** targets) {
   char line[BUFSIZ];
   int i = 0, end = 0, targets_added = 0;
 
-  while(!end) {
+  while (!end) {
     line[i] = fgetc(in);
 
-    if(feof(in))
-      end = 1;
+    if (feof(in)) end = 1;
 
-    if(isspace(line[i]) || end) {
+    if (isspace(line[i]) || end) {
       line[i] = '\0';
       /* avoid adding zero length arg, if multiple spaces separate args */
-      if(i > 0) {
-        if(!alpm_list_find_str(*targets, line)) {
+      if (i > 0) {
+        if (!alpm_list_find_str(*targets, line)) {
           *targets = alpm_list_add(*targets, strdup(line));
         }
         i = 0;
@@ -863,7 +859,7 @@ static int read_targets_from_file(FILE *in, alpm_list_t **targets)
       }
     } else {
       ++i;
-      if(i >= BUFSIZ) {
+      if (i >= BUFSIZ) {
         fprintf(stderr, "error: buffer overflow on stdin\n");
         return -1;
       }
@@ -873,22 +869,21 @@ static int read_targets_from_file(FILE *in, alpm_list_t **targets)
   return targets_added;
 }
 
-static int process_targets(int argc, char **argv, alpm_list_t **targets)
-{
+static int process_targets(int argc, char** argv, alpm_list_t** targets) {
   int allow_stdin;
 
   allow_stdin = !isatty(STDIN_FILENO);
 
-  for(int i = 0; i < argc; ++i) {
-    if(allow_stdin && strcmp(argv[i], "-") == 0) {
+  for (int i = 0; i < argc; ++i) {
+    if (allow_stdin && strcmp(argv[i], "-") == 0) {
       int k;
 
       k = read_targets_from_file(stdin, targets);
-      if(k < 0) {
+      if (k < 0) {
         return k;
       }
 
-      if(k == 0) {
+      if (k == 0) {
         fputs("error: argument '-' specified with empty stdin\n", stderr);
         return -1;
       }
@@ -902,38 +897,37 @@ static int process_targets(int argc, char **argv, alpm_list_t **targets)
   return 0;
 }
 
-int main(int argc, char *argv[])
-{
-  alpm_list_t *results = NULL;
-  _cleanup_(targets_freep) alpm_list_t *targets = NULL;
-  _cleanup_(expac_freep) expac_t *expac = NULL;
+int main(int argc, char* argv[]) {
+  alpm_list_t* results = NULL;
+  _cleanup_(targets_freep) alpm_list_t* targets = NULL;
+  _cleanup_(expac_freep) expac_t* expac = NULL;
   int r;
 
   r = parse_options(&argc, &argv);
-  if(r < 0) {
+  if (r < 0) {
     return 1;
   }
 
   r = process_targets(argc, argv, &targets);
-  if(r < 0) {
+  if (r < 0) {
     return 1;
   }
 
   r = expac_new(&expac, opt_config_file);
-  if(r < 0) {
+  if (r < 0) {
     return 1;
   }
 
   results = expac_search(expac, opt_corpus, targets);
-  if(results == NULL) {
+  if (results == NULL) {
     return 1;
   }
 
-  for(alpm_list_t *i = results; i; i = i->next) {
-    print_pkg(i->data, opt_format);
+  for (alpm_list_t* i = results; i; i = i->next) {
+    print_pkg(static_cast<alpm_pkg_t*>(i->data), opt_format);
   }
 
-  if(opt_corpus == CORPUS_FILE) {
+  if (opt_corpus == CORPUS_FILE) {
     /* packages loaded via alpm_pkg_load() are owned by us and must be
      * freed explicitly; packages from -Q/-S belong to their db and are
      * released when the alpm handle is (see expac_freep). */

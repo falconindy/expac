@@ -16,9 +16,9 @@ typedef enum search_what_t {
 } search_what_t;
 
 typedef struct expac_t {
-  alpm_handle_t *alpm;
+  alpm_handle_t* alpm;
 } expac_t;
 
-#endif  /* _EXPAC_H */
+#endif /* _EXPAC_H */
 
 /* vim: set et ts=2 sw=2: */

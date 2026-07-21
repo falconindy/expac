@@ -1,31 +1,33 @@
-project('expac', 'c',
+project('expac', 'cpp',
         version : '10',
         license : 'MIT',
         default_options : [
-          'c_std=c11',
+          'cpp_std=c++26',
           'prefix=/usr',
         ])
 
 libalpm = dependency('libalpm')
 
 conf = configuration_data()
-conf.set('_GNU_SOURCE', true)
 conf.set_quoted('PACKAGE_NAME', meson.project_name())
 conf.set_quoted('PACKAGE_VERSION', meson.project_version())
 
-cc = meson.get_compiler('c')
+cc = meson.get_compiler('cpp')
 
 configure_file(
     output : 'config.h',
     configuration : conf)
-add_project_arguments('-include', 'config.h', language : 'c')
+add_project_arguments(
+    '-include', 'config.h',
+    '-fno-exceptions',
+    language : 'cpp')
 
 expac_exe = executable(
   'expac',
   files('''
-    src/expac.c
-    src/conf.c src/conf.h
-    src/util.h
+    src/expac.cc
+    src/conf.cc src/conf.hh
+    src/util.hh
   '''.split()),
   dependencies : [
     libalpm,
