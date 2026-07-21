@@ -316,7 +316,7 @@ static int print_escaped(const char *delim)
   return out;
 }
 
-static int print_list(alpm_list_t *list, extractfn fn)
+static int print_list(alpm_list_t *list, extractfn fn, bool free_items)
 {
   alpm_list_t *i;
   int out = 0;
@@ -337,6 +337,10 @@ static int print_list(alpm_list_t *list, extractfn fn)
 
     out += printf("%s", item);
 
+    if(free_items) {
+      free((void *)item);
+    }
+
     if((i = i->next)) {
       out += print_escaped(opt_listdelim);
     } else {
@@ -347,9 +351,9 @@ static int print_list(alpm_list_t *list, extractfn fn)
   return out;
 }
 
-static int print_allocated_list(alpm_list_t *list, extractfn fn)
+static int print_allocated_list(alpm_list_t *list, extractfn fn, bool free_items)
 {
-  int out = print_list(list, fn);
+  int out = print_list(list, fn, free_items);
   alpm_list_free(list);
   return out;
 }
@@ -535,61 +539,63 @@ static void print_pkg(alpm_pkg_t *pkg, const char *format)
           out += print_filelist(alpm_pkg_get_files(pkg));
           break;
         case 'N': /* requiredby */
-          out += print_list(alpm_pkg_compute_requiredby(pkg), NULL);
+          /* compute_requiredby returns a freshly allocated list of
+           * strdup'd names; free both the strings and the list nodes. */
+          out += print_allocated_list(alpm_pkg_compute_requiredby(pkg), NULL, true);
           break;
         case 'W': /* optionalfor */
-          out += print_list(alpm_pkg_compute_optionalfor(pkg), NULL);
+          out += print_allocated_list(alpm_pkg_compute_optionalfor(pkg), NULL, true);
           break;
         case 'L': /* licenses */
-          out += print_list(alpm_pkg_get_licenses(pkg), NULL);
+          out += print_list(alpm_pkg_get_licenses(pkg), NULL, false);
           break;
         case 'G': /* groups */
-          out += print_list(alpm_pkg_get_groups(pkg), NULL);
+          out += print_list(alpm_pkg_get_groups(pkg), NULL, false);
           break;
         case 'E': /* depends (shortdeps) */
-          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name);
+          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_get_name, false);
           break;
         case 'J': /* makedepends */
-          out += print_list(alpm_pkg_get_makedepends(pkg), (extractfn)alpm_dep_compute_string);
+          out += print_list(alpm_pkg_get_makedepends(pkg), (extractfn)alpm_dep_compute_string, true);
           break;
         case 'K': /* checkdepends */
-          out += print_list(alpm_pkg_get_checkdepends(pkg), (extractfn)alpm_dep_compute_string);
+          out += print_list(alpm_pkg_get_checkdepends(pkg), (extractfn)alpm_dep_compute_string, true);
           break;
         case 'D': /* depends */
-          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string);
+          out += print_list(alpm_pkg_get_depends(pkg), (extractfn)alpm_dep_compute_string, true);
           break;
         case 'O': /* optdepends */
-          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)format_optdep);
+          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)format_optdep, true);
           break;
         case 'o': /* optdepends (shortdeps) */
-          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)alpm_dep_get_name);
+          out += print_list(alpm_pkg_get_optdepends(pkg), (extractfn)alpm_dep_get_name, false);
           break;
         case 'H': /* conflicts */
-          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_compute_string);
+          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_compute_string, true);
           break;
         case 'C': /* conflicts (shortdeps) */
-          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_get_name);
+          out += print_list(alpm_pkg_get_conflicts(pkg), (extractfn)alpm_dep_get_name, false);
           break;
         case 'S': /* provides (shortdeps) */
-          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_get_name);
+          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_get_name, false);
           break;
         case 'P': /* provides */
-          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_compute_string);
+          out += print_list(alpm_pkg_get_provides(pkg), (extractfn)alpm_dep_compute_string, true);
           break;
         case 'R': /* replaces (shortdeps) */
-          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_get_name);
+          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_get_name, false);
           break;
         case 'T': /* replaces */
-          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_compute_string);
+          out += print_list(alpm_pkg_get_replaces(pkg), (extractfn)alpm_dep_compute_string, true);
           break;
         case 'B': /* backup */
-          out += print_list(alpm_pkg_get_backup(pkg), (extractfn)alpm_backup_get_name);
+          out += print_list(alpm_pkg_get_backup(pkg), (extractfn)alpm_backup_get_name, false);
           break;
         case 'V': /* package validation */
-          out += print_allocated_list(get_validation_method(pkg), NULL);
+          out += print_allocated_list(get_validation_method(pkg), NULL, false);
           break;
         case 'M': /* modified */
-          out += print_allocated_list(get_modified_files(pkg), NULL);
+          out += print_allocated_list(get_modified_files(pkg), NULL, false);
           break;
         case '%':
           fputc('%', stdout);
@@ -730,6 +736,11 @@ static void expac_free(expac_t *expac)
 
 static void expac_freep(expac_t **expac) {
   expac_free(*expac);
+}
+
+static void targets_freep(alpm_list_t **targets) {
+  alpm_list_free_inner(*targets, free);
+  alpm_list_free(*targets);
 }
 
 static int expac_new(expac_t **expac, const char *config_file)
@@ -893,7 +904,8 @@ static int process_targets(int argc, char **argv, alpm_list_t **targets)
 
 int main(int argc, char *argv[])
 {
-  alpm_list_t *results = NULL, *targets = NULL;
+  alpm_list_t *results = NULL;
+  _cleanup_(targets_freep) alpm_list_t *targets = NULL;
   _cleanup_(expac_freep) expac_t *expac = NULL;
   int r;
 
@@ -921,8 +933,12 @@ int main(int argc, char *argv[])
     print_pkg(i->data, opt_format);
   }
 
-  alpm_list_free_inner(targets, free);
-  alpm_list_free(targets);
+  if(opt_corpus == CORPUS_FILE) {
+    /* packages loaded via alpm_pkg_load() are owned by us and must be
+     * freed explicitly; packages from -Q/-S belong to their db and are
+     * released when the alpm handle is (see expac_freep). */
+    alpm_list_free_inner(results, (alpm_list_fn_free)alpm_pkg_free);
+  }
   alpm_list_free(results);
 
   return 0;
