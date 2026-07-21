@@ -633,11 +633,7 @@ static alpm_list_t *search_packages(alpm_list_t *dbs, alpm_list_t *targets)
 
   for(i = dbs; i; i = i->next) {
     alpm_list_t *results = NULL;
-#ifdef HAVE_THREE_ARG_DB_SEARCH
     alpm_db_search(i->data, targets, &results);
-#else
-    results = alpm_db_search(i->data, targets);
-#endif
     packages = alpm_list_join(packages, results);
   }
 
