@@ -1,0 +1,17 @@
+pkgname = filepkg
+pkgbase = filepkg
+pkgver = 3.0-1
+pkgdesc = A file-loaded test package
+url = https://example.com/filepkg
+builddate = 1577836800
+packager = Test Packager <test@example.com>
+size = 4096
+arch = x86_64
+license = MIT
+depend = glibc
+optdepend = perl: for scripts
+makedepend = git
+checkdepend = python
+provides = libfilepkg.so=1-64
+conflict = oldfilepkg
+replaces = ancientfilepkg

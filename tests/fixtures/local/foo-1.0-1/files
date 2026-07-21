@@ -1,0 +1,12 @@
+%FILES%
+etc/
+etc/foo.conf
+usr/
+usr/bin/
+usr/bin/foo
+usr/share/
+usr/share/foo/
+usr/share/foo/data.txt
+
+%BACKUP%
+etc/foo.conf	d41d8cd98f00b204e9800998ecf8427e

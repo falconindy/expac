@@ -20,7 +20,7 @@ configure_file(
     configuration : conf)
 add_project_arguments('-include', 'config.h', language : 'c')
 
-executable(
+expac_exe = executable(
   'expac',
   files('''
     src/expac.c
@@ -31,6 +31,27 @@ executable(
     libalpm,
   ],
   install : true)
+
+python = import('python')
+py3 = python.find_installation('python3', required : false)
+if py3.found()
+  foreach t : [
+    'test_query.py',
+    'test_sync.py',
+    'test_file.py',
+    'test_format.py',
+    'test_options.py',
+    'test_targets.py',
+  ]
+    test(
+      t.split('.')[0],
+      py3,
+      args : [meson.project_source_root() / 'tests' / t],
+      depends : [expac_exe],
+      env : ['PYTHONDONTWRITEBYTECODE=1'],
+      suite : 'integration')
+  endforeach
+endif
 
 pod2man = find_program('pod2man')
 man = custom_target(

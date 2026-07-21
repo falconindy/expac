@@ -1,0 +1,35 @@
+%NAME%
+baz
+
+%VERSION%
+1.0-1
+
+%BASE%
+baz
+
+%DESC%
+A baz package
+
+%ARCH%
+x86_64
+
+%BUILDDATE%
+1577836800
+
+%INSTALLDATE%
+1577840400
+
+%SIZE%
+512
+
+%REASON%
+1
+
+%LICENSE%
+GPL
+
+%VALIDATION%
+none
+
+%OPTDEPENDS%
+bar: needed for extra baz features

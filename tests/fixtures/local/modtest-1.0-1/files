@@ -1,0 +1,6 @@
+%FILES%
+etc/
+etc/expac-test-modtest-nonexistent.conf
+
+%BACKUP%
+etc/expac-test-modtest-nonexistent.conf	d41d8cd98f00b204e9800998ecf8427e
