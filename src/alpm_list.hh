@@ -36,6 +36,32 @@ class AlpmList {
   alpm_list_t* list_;
 };
 
+/* Owns the *nodes* of a freshly built alpm_list_t (never the items they
+ * point to), for call sites that need to hand libalpm a list built from
+ * some other container -- e.g. alpm_db_search()'s needle list built from
+ * a std::vector<std::string>. fn projects each container element to the
+ * void* libalpm expects. Implicitly converts to alpm_list_t* so it can be
+ * passed straight to alpm_list_t*-taking APIs. */
+class ScopedAlpmList {
+ public:
+  template <typename Container, typename Fn>
+  ScopedAlpmList(const Container& items, Fn fn) {
+    for (const auto& item : items) {
+      list_ = alpm_list_add(list_, fn(item));
+    }
+  }
+
+  ~ScopedAlpmList() { alpm_list_free(list_); }
+
+  ScopedAlpmList(const ScopedAlpmList&) = delete;
+  ScopedAlpmList& operator=(const ScopedAlpmList&) = delete;
+
+  operator alpm_list_t*() const { return list_; }
+
+ private:
+  alpm_list_t* list_ = nullptr;
+};
+
 #endif /* _ALPM_LIST_H */
 
 /* vim: set et ts=2 sw=2: */

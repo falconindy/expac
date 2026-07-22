@@ -673,10 +673,9 @@ static PackageList search_packages(alpm_list_t* dbs,
 
   /* alpm_db_search() takes its needles as an alpm_list_t; build one that
    * just borrows the vector's strings for the duration of the call. */
-  alpm_list_t* needles = NULL;
-  for (const std::string& target : targets) {
-    needles = alpm_list_add(needles, const_cast<char*>(target.c_str()));
-  }
+  ScopedAlpmList needles(targets, [](const std::string& target) {
+    return const_cast<char*>(target.c_str());
+  });
 
   for (alpm_db_t* db : AlpmList<alpm_db_t*>(dbs)) {
     alpm_list_t* results = NULL;
@@ -686,8 +685,6 @@ static PackageList search_packages(alpm_list_t* dbs,
     }
     alpm_list_free(results);
   }
-
-  alpm_list_free(needles);
 
   return packages;
 }
