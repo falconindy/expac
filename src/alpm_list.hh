@@ -40,8 +40,8 @@ class AlpmList {
  * point to), for call sites that need to hand libalpm a list built from
  * some other container -- e.g. alpm_db_search()'s needle list built from
  * a std::vector<std::string>. fn projects each container element to the
- * void* libalpm expects. Implicitly converts to alpm_list_t* so it can be
- * passed straight to alpm_list_t*-taking APIs. */
+ * void* libalpm expects.
+ */
 class ScopedAlpmList {
  public:
   template <typename Container, typename Fn>
@@ -56,7 +56,7 @@ class ScopedAlpmList {
   ScopedAlpmList(const ScopedAlpmList&) = delete;
   ScopedAlpmList& operator=(const ScopedAlpmList&) = delete;
 
-  operator alpm_list_t*() const { return list_; }
+  alpm_list_t* to_list() const { return list_; }
 
  private:
   alpm_list_t* list_ = nullptr;

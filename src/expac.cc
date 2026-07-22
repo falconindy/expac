@@ -679,7 +679,7 @@ static PackageList search_packages(alpm_list_t* dbs,
 
   for (alpm_db_t* db : AlpmList<alpm_db_t*>(dbs)) {
     alpm_list_t* results = NULL;
-    alpm_db_search(db, needles, &results);
+    alpm_db_search(db, needles.to_list(), &results);
     for (alpm_pkg_t* pkg : AlpmList<alpm_pkg_t*>(results)) {
       packages.push_back(pkg);
     }
