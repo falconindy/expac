@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <fstream>
+#include <string>
+
 #include "util.hh"
 
 static size_t strtrim(char* str) {
@@ -36,27 +39,35 @@ static size_t strtrim(char* str) {
   return right - left;
 }
 
-static int is_section(const char* s, int n) {
-  return s[0] == '[' && s[n - 1] == ']';
+/* strtrim() operates in place on a raw buffer; run a std::string through it
+ * via a fresh copy so callers never have to think about the underlying
+ * buffer being resized out from under them. */
+static std::string Trim(std::string s) {
+  s.resize(strtrim(s.data()));
+  return s;
 }
 
-static int config_add_repo(config_t* config, char* reponame) {
-  config->repos.emplace_back(reponame);
+static bool is_section(const std::string& s) {
+  return !s.empty() && s.front() == '[' && s.back() == ']';
+}
+
+static int config_add_repo(config_t* config, const std::string& reponame) {
+  config->repos.push_back(reponame);
 
   return 0;
 }
 
 static int parse_one_file(config_t* config, const char* filename,
-                          char** section);
+                          std::string* section);
 
-static int parse_include(config_t* config, const char* include,
-                         char** section) {
+static int parse_include(config_t* config, const std::string& include,
+                         std::string* section) {
   glob_t globbuf;
   int r = 0;
 
-  if (glob(include, GLOB_NOCHECK, NULL, &globbuf) != 0) {
+  if (glob(include.c_str(), GLOB_NOCHECK, NULL, &globbuf) != 0) {
     fprintf(stderr, "warning: globbing failed on '%s': out of memory\n",
-            include);
+            include.c_str());
     return -ENOMEM;
   }
 
@@ -72,53 +83,27 @@ static int parse_include(config_t* config, const char* include,
 }
 
 static int parse_one_file(config_t* config, const char* filename,
-                          char** section) {
-  FILE* fp = NULL;
-  char* line = NULL;
-  size_t n = 0;
-  int in_options;
-
-  in_options = *section && strcmp(*section, "options") == 0;
-
-  fp = fopen(filename, "r");
-  if (fp == NULL) {
+                          std::string* section) {
+  std::ifstream fp(filename);
+  if (!fp) {
     return -errno;
   }
-  auto fp_guard = MakeScopeGuard([&] { fclose(fp); });
-  auto line_guard = MakeScopeGuard([&] { free(line); });
 
-  for (;;) {
-    ssize_t len;
-    char* val;
+  int in_options = !section->empty() && *section == "options";
 
-    errno = 0;
-    len = getline(&line, &n, fp);
-    if (len < 0) {
-      if (errno != 0) {
-        return -errno;
-      }
-
-      /* EOF */
-      break;
-    }
-
-    len = strtrim(line);
-    if (len == 0 || line[0] == '#') {
+  std::string line;
+  while (std::getline(fp, line)) {
+    line = Trim(std::move(line));
+    if (line.empty() || line[0] == '#') {
       continue;
     }
 
-    if (is_section(line, len)) {
-      free(*section);
-      *section = strndup(&line[1], len - 2);
-      if (*section == NULL) {
-        return -ENOMEM;
-      }
+    if (is_section(line)) {
+      *section = line.substr(1, line.size() - 2);
 
-      in_options = strcmp(*section, "options") == 0;
+      in_options = (*section == "options");
       if (!in_options) {
-        int r;
-
-        r = config_add_repo(config, *section);
+        int r = config_add_repo(config, *section);
         if (r < 0) {
           return r;
         }
@@ -126,24 +111,22 @@ static int parse_one_file(config_t* config, const char* filename,
       continue;
     }
 
-    val = line;
-    strsep(&val, "=");
-    strtrim(line);
-    strtrim(val);
+    size_t eq = line.find('=');
+    std::string key = Trim(eq == std::string::npos ? line : line.substr(0, eq));
+    std::string val =
+        Trim(eq == std::string::npos ? std::string() : line.substr(eq + 1));
 
-    if (strcmp(line, "Include") == 0) {
-      int k;
-
-      k = parse_include(config, val, section);
+    if (key == "Include") {
+      int k = parse_include(config, val, section);
       if (k < 0) {
         return k;
       }
     }
 
     if (in_options) {
-      if (strcmp(line, "DBPath") == 0) {
+      if (key == "DBPath") {
         config->dbpath = val;
-      } else if (strcmp(line, "RootDir") == 0) {
+      } else if (key == "RootDir") {
         config->dbroot = val;
       }
     }
@@ -153,8 +136,7 @@ static int parse_one_file(config_t* config, const char* filename,
 }
 
 int config_parse(config_t* config, const char* filename) {
-  char* section = NULL;
-  auto section_guard = MakeScopeGuard([&] { free(section); });
+  std::string section;
 
   return parse_one_file(config, filename, &section);
 }

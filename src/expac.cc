@@ -395,19 +395,18 @@ static int print_filelist(alpm_filelist_t* filelist, const Options& opts) {
 
 static bool backup_file_is_modified(const alpm_backup_t* backup_file) {
   char fullpath[PATH_MAX];
-  char* md5sum = NULL;
-  auto md5sum_guard = MakeScopeGuard([&] { free(md5sum); });
-  bool modified;
 
   /* TODO: respect expac->dbroot */
   snprintf(fullpath, sizeof(fullpath), "/%s", backup_file->name);
 
-  md5sum = alpm_compute_md5sum(fullpath);
+  char* md5sum = alpm_compute_md5sum(fullpath);
   if (md5sum == NULL) {
     return false;
   }
 
-  modified = strcmp(md5sum, backup_file->hash) != 0;
+  bool modified = strcmp(md5sum, backup_file->hash) != 0;
+
+  free(md5sum);
 
   return modified;
 }
