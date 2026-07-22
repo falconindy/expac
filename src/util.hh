@@ -1,14 +1,29 @@
 #ifndef _UTIL_H
 #define _UTIL_H
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <utility>
 
-static inline void freep(void* p) { free(*(void**)p); }
-static inline void fclosep(FILE** p) {
-  if (*p) fclose(*p);
+/* Runs a cleanup function at scope exit, replacing the GNU
+ * __attribute__((cleanup)) extension with portable C++. Move-only (there's
+ * only ever one thing running the cleanup); not copyable. */
+template <typename F>
+class ScopeGuard {
+ public:
+  explicit ScopeGuard(F f) : f_(std::move(f)) {}
+  ~ScopeGuard() { f_(); }
+
+  ScopeGuard(const ScopeGuard&) = delete;
+  ScopeGuard& operator=(const ScopeGuard&) = delete;
+  ScopeGuard(ScopeGuard&&) = delete;
+  ScopeGuard& operator=(ScopeGuard&&) = delete;
+
+ private:
+  F f_;
+};
+
+template <typename F>
+ScopeGuard<F> MakeScopeGuard(F f) {
+  return ScopeGuard<F>(std::move(f));
 }
-#define _cleanup_(x) __attribute__((cleanup(x)))
-#define _cleanup_free_ _cleanup_(freep)
 
 #endif /* _UTIL_H */

@@ -410,7 +410,8 @@ static int print_filelist(alpm_filelist_t* filelist) {
 
 static bool backup_file_is_modified(const alpm_backup_t* backup_file) {
   char fullpath[PATH_MAX];
-  _cleanup_free_ char* md5sum = NULL;
+  char* md5sum = NULL;
+  auto md5sum_guard = MakeScopeGuard([&] { free(md5sum); });
   bool modified;
 
   /* TODO: respect expac->dbroot */
@@ -759,11 +760,6 @@ static PackageList resolve_targets(alpm_list_t* dblist, alpm_list_t* targets) {
   return search_exact(dblist, targets);
 }
 
-static void targets_freep(alpm_list_t** targets) {
-  alpm_list_free_inner(*targets, free);
-  alpm_list_free(*targets);
-}
-
 Expac::Expac(alpm_handle_t* alpm) : alpm_(alpm) {}
 
 Expac::~Expac() {
@@ -913,7 +909,11 @@ static int process_targets(int argc, char** argv, alpm_list_t** targets) {
 }
 
 int main(int argc, char* argv[]) {
-  _cleanup_(targets_freep) alpm_list_t* targets = NULL;
+  alpm_list_t* targets = NULL;
+  auto targets_guard = MakeScopeGuard([&] {
+    alpm_list_free_inner(targets, free);
+    alpm_list_free(targets);
+  });
   int r;
 
   r = parse_options(&argc, &argv);

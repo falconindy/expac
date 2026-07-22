@@ -73,8 +73,8 @@ static int parse_include(config_t* config, const char* include,
 
 static int parse_one_file(config_t* config, const char* filename,
                           char** section) {
-  _cleanup_(fclosep) FILE* fp = NULL;
-  _cleanup_free_ char* line = NULL;
+  FILE* fp = NULL;
+  char* line = NULL;
   size_t n = 0;
   int in_options;
 
@@ -84,6 +84,8 @@ static int parse_one_file(config_t* config, const char* filename,
   if (fp == NULL) {
     return -errno;
   }
+  auto fp_guard = MakeScopeGuard([&] { fclose(fp); });
+  auto line_guard = MakeScopeGuard([&] { free(line); });
 
   for (;;) {
     ssize_t len;
@@ -151,7 +153,8 @@ static int parse_one_file(config_t* config, const char* filename,
 }
 
 int config_parse(config_t* config, const char* filename) {
-  _cleanup_free_ char* section = NULL;
+  char* section = NULL;
+  auto section_guard = MakeScopeGuard([&] { free(section); });
 
   return parse_one_file(config, filename, &section);
 }
