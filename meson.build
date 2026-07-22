@@ -28,6 +28,7 @@ expac_exe = executable(
     src/expac.cc
     src/conf.cc src/conf.hh
     src/alpm_list.hh
+    src/package_formatter.cc src/package_formatter.hh
   '''.split()),
   dependencies : [
     libalpm,

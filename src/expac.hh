@@ -36,7 +36,6 @@ struct Options {
   const char* listdelim = "  ";
   const char* delim = "\n";
   const char* config_file = "/etc/pacman.conf";
-  int pkgcounter = 0;
 };
 
 // Owns an alpm_handle_t, initialized from a pacman.conf-style config file.
