@@ -38,6 +38,9 @@
 #include <string.h>
 #include <time.h>
 
+#include <string>
+#include <vector>
+
 #include "conf.hh"
 #include "util.hh"
 
@@ -65,14 +68,12 @@ const char* opt_delim = DEFAULT_DELIM;
 const char* opt_config_file = "/etc/pacman.conf";
 int opt_pkgcounter = 0;
 
-typedef const char* (*extractfn)(void*);
-
 static int is_valid_size_unit(char* u) {
   return u[0] != '\0' && u[1] == '\0' &&
          memchr(size_tokens, *u, sizeof(size_tokens) - 1) != NULL;
 }
 
-static const char* alpm_backup_get_name(alpm_backup_t* bkup) {
+static std::string alpm_backup_get_name(alpm_backup_t* bkup) {
   return bkup->name;
 }
 
@@ -116,17 +117,19 @@ static char* size_to_string(off_t pkgsize) {
   return out;
 }
 
-static char* format_optdep(alpm_depend_t* optdep) {
-  char* out = NULL;
-
-  if (asprintf(&out, "%s: %s", optdep->name, optdep->desc) < 0) {
-    return NULL;
-  }
-
-  return out;
+static std::string format_optdep(alpm_depend_t* optdep) {
+  return std::string(optdep->name) + ": " +
+         (optdep->desc ? optdep->desc : "(null)");
 }
 
-static const char* alpm_dep_get_name(alpm_depend_t* dep) { return dep->name; }
+static std::string alpm_dep_get_name(alpm_depend_t* dep) { return dep->name; }
+
+static std::string dep_to_string(alpm_depend_t* dep) {
+  char* s = alpm_dep_compute_string(dep);
+  std::string result(s != NULL ? s : "");
+  free(s);
+  return result;
+}
 
 static void usage(void) {
   printf(
@@ -311,44 +314,66 @@ static int print_escaped(const char* delim) {
   return out;
 }
 
-static int print_list(alpm_list_t* list, extractfn fn, bool free_items) {
-  alpm_list_t* i;
+/* Converts an alpm_list_t of T* into strings via fn(T*), e.g. turning a
+ * list of alpm_depend_t* into their formatted name/version strings. The
+ * static_cast<T*> here is the only cast involved -- unlike a function
+ * pointer typedef'd to take void*, this is checked against fn's real
+ * parameter type at compile time. */
+template <typename T, typename Fn>
+static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list, Fn fn) {
+  std::vector<std::string> result;
+
+  for (alpm_list_t* i = list; i; i = i->next) {
+    result.push_back(fn(static_cast<T*>(i->data)));
+  }
+
+  return result;
+}
+
+/* Same, for lists whose items are themselves plain C strings owned by
+ * libalpm (e.g. licenses, groups) -- no per-item extraction needed. */
+static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list) {
+  std::vector<std::string> result;
+
+  for (alpm_list_t* i = list; i; i = i->next) {
+    result.emplace_back(static_cast<const char*>(i->data));
+  }
+
+  return result;
+}
+
+/* Same, for the handful of alpm_pkg_compute_*() calls that return a list
+ * we own outright (both the nodes and the strdup'd strings). */
+static std::vector<std::string> alpm_owned_list_to_strings(alpm_list_t* list) {
+  std::vector<std::string> result;
+
+  for (alpm_list_t* i = list; i; i = i->next) {
+    result.emplace_back(static_cast<char*>(i->data));
+  }
+
+  alpm_list_free_inner(list, free);
+  alpm_list_free(list);
+
+  return result;
+}
+
+static int print_list(const std::vector<std::string>& items) {
   int out = 0;
 
-  if (!list) {
+  if (items.empty()) {
     if (opt_verbose) {
       out += printf("None");
     }
     return out;
   }
 
-  i = list;
-  for (;;) {
-    const char* item = fn ? fn(i->data) : static_cast<const char*>(i->data);
-    if (item == NULL) {
-      continue;
-    }
-
-    out += printf("%s", item);
-
-    if (free_items) {
-      free((void*)item);
-    }
-
-    if ((i = i->next)) {
+  for (size_t i = 0; i < items.size(); ++i) {
+    out += printf("%s", items[i].c_str());
+    if (i + 1 < items.size()) {
       out += print_escaped(opt_listdelim);
-    } else {
-      break;
     }
   }
 
-  return out;
-}
-
-static int print_allocated_list(alpm_list_t* list, extractfn fn,
-                                bool free_items) {
-  int out = print_list(list, fn, free_items);
-  alpm_list_free(list);
   return out;
 }
 
@@ -402,41 +427,41 @@ static bool backup_file_is_modified(const alpm_backup_t* backup_file) {
   return modified;
 }
 
-static alpm_list_t* get_modified_files(alpm_pkg_t* pkg) {
-  alpm_list_t *i, *modified_files = NULL;
+static std::vector<std::string> get_modified_files(alpm_pkg_t* pkg) {
+  std::vector<std::string> modified_files;
 
-  for (i = alpm_pkg_get_backup(pkg); i; i = i->next) {
+  for (alpm_list_t* i = alpm_pkg_get_backup(pkg); i; i = i->next) {
     const alpm_backup_t* backup = static_cast<const alpm_backup_t*>(i->data);
     if (backup->hash && backup_file_is_modified(backup)) {
-      modified_files = alpm_list_add(modified_files, backup->name);
+      modified_files.emplace_back(backup->name);
     }
   }
 
   return modified_files;
 }
 
-static alpm_list_t* get_validation_method(alpm_pkg_t* pkg) {
-  alpm_list_t* validation = NULL;
-
+static std::vector<std::string> get_validation_method(alpm_pkg_t* pkg) {
   alpm_pkgvalidation_t v =
       static_cast<alpm_pkgvalidation_t>(alpm_pkg_get_validation(pkg));
 
   if (v == ALPM_PKG_VALIDATION_UNKNOWN) {
-    return alpm_list_add(validation, const_cast<char*>("Unknown"));
+    return {"Unknown"};
   }
 
   if (v & ALPM_PKG_VALIDATION_NONE) {
-    return alpm_list_add(validation, const_cast<char*>("None"));
+    return {"None"};
   }
 
+  std::vector<std::string> validation;
+
   if (v & ALPM_PKG_VALIDATION_MD5SUM) {
-    validation = alpm_list_add(validation, const_cast<char*>("MD5 Sum"));
+    validation.emplace_back("MD5 Sum");
   }
   if (v & ALPM_PKG_VALIDATION_SHA256SUM) {
-    validation = alpm_list_add(validation, const_cast<char*>("SHA256 Sum"));
+    validation.emplace_back("SHA256 Sum");
   }
   if (v & ALPM_PKG_VALIDATION_SIGNATURE) {
-    validation = alpm_list_add(validation, const_cast<char*>("Signature"));
+    validation.emplace_back("Signature");
   }
 
   return validation;
@@ -530,78 +555,76 @@ static void print_pkg(alpm_pkg_t* pkg, const char* format) {
           out += print_filelist(alpm_pkg_get_files(pkg));
           break;
         case 'N': /* requiredby */
-          /* compute_requiredby returns a freshly allocated list of
-           * strdup'd names; free both the strings and the list nodes. */
-          out += print_allocated_list(alpm_pkg_compute_requiredby(pkg), NULL,
-                                      true);
+          out += print_list(
+              alpm_owned_list_to_strings(alpm_pkg_compute_requiredby(pkg)));
           break;
         case 'W': /* optionalfor */
-          out += print_allocated_list(alpm_pkg_compute_optionalfor(pkg), NULL,
-                                      true);
+          out += print_list(
+              alpm_owned_list_to_strings(alpm_pkg_compute_optionalfor(pkg)));
           break;
         case 'L': /* licenses */
-          out += print_list(alpm_pkg_get_licenses(pkg), NULL, false);
+          out += print_list(alpm_list_to_strings(alpm_pkg_get_licenses(pkg)));
           break;
         case 'G': /* groups */
-          out += print_list(alpm_pkg_get_groups(pkg), NULL, false);
+          out += print_list(alpm_list_to_strings(alpm_pkg_get_groups(pkg)));
           break;
         case 'E': /* depends (shortdeps) */
-          out += print_list(alpm_pkg_get_depends(pkg),
-                            (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_depends(pkg), alpm_dep_get_name));
           break;
         case 'J': /* makedepends */
-          out += print_list(alpm_pkg_get_makedepends(pkg),
-                            (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_makedepends(pkg), dep_to_string));
           break;
         case 'K': /* checkdepends */
-          out += print_list(alpm_pkg_get_checkdepends(pkg),
-                            (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_checkdepends(pkg), dep_to_string));
           break;
         case 'D': /* depends */
-          out += print_list(alpm_pkg_get_depends(pkg),
-                            (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_depends(pkg), dep_to_string));
           break;
         case 'O': /* optdepends */
-          out += print_list(alpm_pkg_get_optdepends(pkg),
-                            (extractfn)format_optdep, true);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_optdepends(pkg), format_optdep));
           break;
         case 'o': /* optdepends (shortdeps) */
-          out += print_list(alpm_pkg_get_optdepends(pkg),
-                            (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_optdepends(pkg), alpm_dep_get_name));
           break;
         case 'H': /* conflicts */
-          out += print_list(alpm_pkg_get_conflicts(pkg),
-                            (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_conflicts(pkg), dep_to_string));
           break;
         case 'C': /* conflicts (shortdeps) */
-          out += print_list(alpm_pkg_get_conflicts(pkg),
-                            (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_conflicts(pkg), alpm_dep_get_name));
           break;
         case 'S': /* provides (shortdeps) */
-          out += print_list(alpm_pkg_get_provides(pkg),
-                            (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_provides(pkg), alpm_dep_get_name));
           break;
         case 'P': /* provides */
-          out += print_list(alpm_pkg_get_provides(pkg),
-                            (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_provides(pkg), dep_to_string));
           break;
         case 'R': /* replaces (shortdeps) */
-          out += print_list(alpm_pkg_get_replaces(pkg),
-                            (extractfn)alpm_dep_get_name, false);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_replaces(pkg), alpm_dep_get_name));
           break;
         case 'T': /* replaces */
-          out += print_list(alpm_pkg_get_replaces(pkg),
-                            (extractfn)alpm_dep_compute_string, true);
+          out += print_list(alpm_list_to_strings<alpm_depend_t>(
+              alpm_pkg_get_replaces(pkg), dep_to_string));
           break;
         case 'B': /* backup */
-          out += print_list(alpm_pkg_get_backup(pkg),
-                            (extractfn)alpm_backup_get_name, false);
+          out += print_list(alpm_list_to_strings<alpm_backup_t>(
+              alpm_pkg_get_backup(pkg), alpm_backup_get_name));
           break;
         case 'V': /* package validation */
-          out += print_allocated_list(get_validation_method(pkg), NULL, false);
+          out += print_list(get_validation_method(pkg));
           break;
         case 'M': /* modified */
-          out += print_allocated_list(get_modified_files(pkg), NULL, false);
+          out += print_list(get_modified_files(pkg));
           break;
         case '%':
           fputc('%', stdout);
