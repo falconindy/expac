@@ -1,17 +1,18 @@
 #ifndef _CONF_H
 #define _CONF_H
 
-typedef struct config_t {
-  char** repos;
-  int size;
-  int capacity;
+#include <optional>
+#include <string>
+#include <vector>
 
-  char* dbroot;
-  char* dbpath;
+typedef struct config_t {
+  std::vector<std::string> repos;
+
+  std::optional<std::string> dbroot;
+  std::optional<std::string> dbpath;
 } config_t;
 
 int config_parse(config_t* config, const char* filename);
-void config_reset(config_t* config);
 
 #endif /* _CONF_H */
 

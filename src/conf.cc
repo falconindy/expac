@@ -41,33 +41,7 @@ static int is_section(const char* s, int n) {
 }
 
 static int config_add_repo(config_t* config, char* reponame) {
-  /* first time setup */
-  if (config->repos == NULL) {
-    config->repos = static_cast<char**>(calloc(10, sizeof(char*)));
-    if (config->repos == NULL) {
-      return -ENOMEM;
-    }
-
-    config->size = 0;
-    config->capacity = 10;
-  }
-
-  /* grow when needed */
-  if (config->size == config->capacity) {
-    void* ptr;
-    const size_t newcap = config->capacity * 2.5;
-
-    ptr = realloc(config->repos, newcap * sizeof(char*));
-    if (ptr == NULL) {
-      return -ENOMEM;
-    }
-
-    config->repos = static_cast<char**>(ptr);
-    config->capacity = newcap;
-  }
-
-  config->repos[config->size] = strdup(reponame);
-  ++config->size;
+  config->repos.emplace_back(reponame);
 
   return 0;
 }
@@ -166,34 +140,14 @@ static int parse_one_file(config_t* config, const char* filename,
 
     if (in_options) {
       if (strcmp(line, "DBPath") == 0) {
-        config->dbpath = strdup(val);
-        if (config->dbpath == NULL) {
-          return -ENOMEM;
-        }
+        config->dbpath = val;
       } else if (strcmp(line, "RootDir") == 0) {
-        config->dbroot = strdup(val);
-        if (config->dbroot == NULL) {
-          return -ENOMEM;
-        }
+        config->dbroot = val;
       }
     }
   }
 
   return 0;
-}
-
-void config_reset(config_t* config) {
-  if (config == NULL) {
-    return;
-  }
-
-  for (int i = 0; i < config->size; ++i) {
-    free(config->repos[i]);
-  }
-
-  free(config->dbroot);
-  free(config->dbpath);
-  free(config->repos);
 }
 
 int config_parse(config_t* config, const char* filename) {

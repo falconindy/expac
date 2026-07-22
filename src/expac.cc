@@ -757,19 +757,17 @@ static int expac_new(expac_t** expac, const char* config_file) {
     return -ENOMEM;
   }
 
-  memset(&config, 0, sizeof(config));
-
   r = config_parse(&config, config_file);
   if (r < 0) {
     return r;
   }
 
   if (config.dbpath) {
-    dbpath = config.dbpath;
+    dbpath = config.dbpath->c_str();
   }
 
   if (config.dbroot) {
-    dbroot = config.dbroot;
+    dbroot = config.dbroot->c_str();
   }
 
   e->alpm = alpm_initialize(dbroot, dbpath, &alpm_errno);
@@ -779,11 +777,9 @@ static int expac_new(expac_t** expac, const char* config_file) {
     return -alpm_errno;
   }
 
-  for (int i = 0; i < config.size; ++i) {
-    alpm_register_syncdb(e->alpm, config.repos[i], 0);
+  for (const auto& repo : config.repos) {
+    alpm_register_syncdb(e->alpm, repo.c_str(), 0);
   }
-
-  config_reset(&config);
 
   *expac = e;
 
