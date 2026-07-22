@@ -14,6 +14,6 @@ typedef struct config_t {
 
 int config_parse(config_t* config, const char* filename);
 
-#endif /* _CONF_H */
+#endif // _CONF_H
 
-/* vim: set et ts=2 sw=2: */
+// vim: set et ts=2 sw=2:

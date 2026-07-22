@@ -1,28 +1,27 @@
-/* Copyright (c) 2010-2014 Dave Reisner
- *
- * expac.c
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
+// Copyright (c) 2010-2014 Dave Reisner
+//
+// expac.c
+//
+// Permission is hereby granted, free of charge, to any person
+// obtaining a copy of this software and associated documentation
+// files (the "Software"), to deal in the Software without
+// restriction, including without limitation the rights to use,
+// copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the
+// Software is furnished to do so, subject to the following
+// conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+// OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+// OTHER DEALINGS IN THE SOFTWARE.
 
 #include "expac.hh"
 
@@ -266,7 +265,7 @@ static int print_escaped(const char* delim) {
         case 'b':
           fputc('\b', stdout);
           break;
-        case 'e': /* \e is nonstandard */
+        case 'e': // \e is nonstandard
           fputc('\033', stdout);
           break;
         case 'n':
@@ -298,8 +297,8 @@ static int print_escaped(const char* delim) {
   return out;
 }
 
-/* Converts an alpm_list_t of T* into strings via fn(T*), e.g. turning a
- * list of alpm_depend_t* into their formatted name/version strings. */
+// Converts an alpm_list_t of T* into strings via fn(T*), e.g. turning a
+// list of alpm_depend_t* into their formatted name/version strings.
 template <typename T, typename Fn>
 static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list, Fn fn) {
   std::vector<std::string> result;
@@ -311,8 +310,8 @@ static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list, Fn fn) {
   return result;
 }
 
-/* Same, for lists whose items are themselves plain C strings owned by
- * libalpm (e.g. licenses, groups) -- no per-item extraction needed. */
+// Same, for lists whose items are themselves plain C strings owned by
+// libalpm (e.g. licenses, groups) -- no per-item extraction needed.
 static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list) {
   std::vector<std::string> result;
 
@@ -323,8 +322,8 @@ static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list) {
   return result;
 }
 
-/* Same, for the handful of alpm_pkg_compute_*() calls that return a list
- * we own outright (both the nodes and the strdup'd strings). */
+// Same, for the handful of alpm_pkg_compute_*() calls that return a list
+// we own outright (both the nodes and the strdup'd strings).
 static std::vector<std::string> alpm_owned_list_to_strings(alpm_list_t* list) {
   std::vector<std::string> result;
 
@@ -370,7 +369,7 @@ static int print_time(time_t timestamp, const Options& opts) {
     return out;
   }
 
-  /* no overflow here, strftime prints a max of 64 including null */
+  // no overflow here, strftime prints a max of 64 including null
   strftime(&buffer[0], 64, opts.timefmt, localtime(&timestamp));
   out += printf("%s", buffer);
 
@@ -394,7 +393,7 @@ static int print_filelist(alpm_filelist_t* filelist, const Options& opts) {
 static bool backup_file_is_modified(const alpm_backup_t* backup_file) {
   char fullpath[PATH_MAX];
 
-  /* TODO: respect expac->dbroot */
+  // TODO: respect expac->dbroot
   snprintf(fullpath, sizeof(fullpath), "/%s", backup_file->name);
 
   char* md5sum = alpm_compute_md5sum(fullpath);
@@ -467,167 +466,167 @@ static void print_pkg(alpm_pkg_t* pkg, Options& opts) {
 
       f += l;
       switch (*f) {
-        /* simple attributes */
-        case 'f': /* filename */
+        // simple attributes
+        case 'f': // filename
           out += printf(fmt, alpm_pkg_get_filename(pkg));
           break;
-        case 'e': /* package base */
+        case 'e': // package base
           out += printf(fmt, alpm_pkg_get_base(pkg));
           break;
-        case 'n': /* package name */
+        case 'n': // package name
           out += printf(fmt, alpm_pkg_get_name(pkg));
           break;
-        case 'v': /* version */
+        case 'v': // version
           out += printf(fmt, alpm_pkg_get_version(pkg));
           break;
-        case 'd': /* description */
+        case 'd': // description
           out += printf(fmt, alpm_pkg_get_desc(pkg));
           break;
-        case 'u': /* project url */
+        case 'u': // project url
           out += printf(fmt, alpm_pkg_get_url(pkg));
           break;
-        case 'p': /* packager name */
+        case 'p': // packager name
           out += printf(fmt, alpm_pkg_get_packager(pkg));
           break;
-        case 's': /* md5sum */
+        case 's': // md5sum
           out += printf(fmt, alpm_pkg_get_md5sum(pkg));
           break;
-        case 'a': /* architecture */
+        case 'a': // architecture
           out += printf(fmt, alpm_pkg_get_arch(pkg));
           break;
-        case 'i': /* has install scriptlet? */
+        case 'i': // has install scriptlet?
           out += printf(fmt, alpm_pkg_has_scriptlet(pkg) ? "yes" : "no");
           break;
-        case 'r': /* repo */
+        case 'r': // repo
           out += printf(fmt, alpm_db_get_name(alpm_pkg_get_db(pkg)));
           break;
-        case 'w': /* install reason */
+        case 'w': // install reason
           out +=
               printf(fmt, alpm_pkg_get_reason(pkg) ? "dependency" : "explicit");
           break;
-        case '!': /* result number */
+        case '!': // result number
           fmt[strlen(fmt) - 1] = 'd';
           out += printf(fmt, opts.pkgcounter++);
           break;
-        case 'g': /* base64 gpg sig */
+        case 'g': // base64 gpg sig
           out += printf(fmt, alpm_pkg_get_base64_sig(pkg));
           break;
-        case 'h': /* sha256sum */
+        case 'h': // sha256sum
           out += printf(fmt, alpm_pkg_get_sha256sum(pkg));
           break;
 
-        /* times */
-        case 'b': /* build date */
+        // times
+        case 'b': // build date
           out += print_time(alpm_pkg_get_builddate(pkg), opts);
           break;
-        case 'l': /* install date */
+        case 'l': // install date
           out += print_time(alpm_pkg_get_installdate(pkg), opts);
           break;
 
-        /* sizes */
-        case 'k': /* download size */
+        // sizes
+        case 'k': // download size
           out += printf(
               fmt,
               size_to_string(alpm_pkg_get_size(pkg), opts.humansize).c_str());
           break;
-        case 'm': /* install size */
+        case 'm': // install size
           out += printf(
               fmt,
               size_to_string(alpm_pkg_get_isize(pkg), opts.humansize).c_str());
           break;
 
-        /* lists */
-        case 'F': /* files */
+        // lists
+        case 'F': // files
           out += print_filelist(alpm_pkg_get_files(pkg), opts);
           break;
-        case 'N': /* requiredby */
+        case 'N': // requiredby
           out += print_list(
               alpm_owned_list_to_strings(alpm_pkg_compute_requiredby(pkg)),
               opts);
           break;
-        case 'W': /* optionalfor */
+        case 'W': // optionalfor
           out += print_list(
               alpm_owned_list_to_strings(alpm_pkg_compute_optionalfor(pkg)),
               opts);
           break;
-        case 'L': /* licenses */
+        case 'L': // licenses
           out += print_list(alpm_list_to_strings(alpm_pkg_get_licenses(pkg)),
                             opts);
           break;
-        case 'G': /* groups */
+        case 'G': // groups
           out +=
               print_list(alpm_list_to_strings(alpm_pkg_get_groups(pkg)), opts);
           break;
-        case 'E': /* depends (shortdeps) */
+        case 'E': // depends (shortdeps)
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_depends(pkg), alpm_dep_get_name),
                             opts);
           break;
-        case 'J': /* makedepends */
+        case 'J': // makedepends
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_makedepends(pkg), dep_to_string),
                             opts);
           break;
-        case 'K': /* checkdepends */
+        case 'K': // checkdepends
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_checkdepends(pkg), dep_to_string),
                             opts);
           break;
-        case 'D': /* depends */
+        case 'D': // depends
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_depends(pkg), dep_to_string),
                             opts);
           break;
-        case 'O': /* optdepends */
+        case 'O': // optdepends
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_optdepends(pkg), format_optdep),
                             opts);
           break;
-        case 'o': /* optdepends (shortdeps) */
+        case 'o': // optdepends (shortdeps)
           out +=
               print_list(alpm_list_to_strings<alpm_depend_t>(
                              alpm_pkg_get_optdepends(pkg), alpm_dep_get_name),
                          opts);
           break;
-        case 'H': /* conflicts */
+        case 'H': // conflicts
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_conflicts(pkg), dep_to_string),
                             opts);
           break;
-        case 'C': /* conflicts (shortdeps) */
+        case 'C': // conflicts (shortdeps)
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_conflicts(pkg), alpm_dep_get_name),
                             opts);
           break;
-        case 'S': /* provides (shortdeps) */
+        case 'S': // provides (shortdeps)
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_provides(pkg), alpm_dep_get_name),
                             opts);
           break;
-        case 'P': /* provides */
+        case 'P': // provides
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_provides(pkg), dep_to_string),
                             opts);
           break;
-        case 'R': /* replaces (shortdeps) */
+        case 'R': // replaces (shortdeps)
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_replaces(pkg), alpm_dep_get_name),
                             opts);
           break;
-        case 'T': /* replaces */
+        case 'T': // replaces
           out += print_list(alpm_list_to_strings<alpm_depend_t>(
                                 alpm_pkg_get_replaces(pkg), dep_to_string),
                             opts);
           break;
-        case 'B': /* backup */
+        case 'B': // backup
           out += print_list(alpm_list_to_strings<alpm_backup_t>(
                                 alpm_pkg_get_backup(pkg), alpm_backup_get_name),
                             opts);
           break;
-        case 'V': /* package validation */
+        case 'V': // package validation
           out += print_list(get_validation_method(pkg), opts);
           break;
-        case 'M': /* modified */
+        case 'M': // modified
           out += print_list(get_modified_files(pkg), opts);
           break;
         case '%':
@@ -649,7 +648,7 @@ static void print_pkg(alpm_pkg_t* pkg, Options& opts) {
     }
   }
 
-  /* only print a delimeter if any package data was outputted */
+  // only print a delimeter if any package data was outputted
   if (out > 0) {
     print_escaped(opts.delim);
   }
@@ -671,8 +670,8 @@ static PackageList search_packages(alpm_list_t* dbs,
                                    const std::vector<std::string>& targets) {
   PackageList packages;
 
-  /* alpm_db_search() takes its needles as an alpm_list_t; build one that
-   * just borrows the vector's strings for the duration of the call. */
+  // alpm_db_search() takes its needles as an alpm_list_t; build one that
+  // just borrows the vector's strings for the duration of the call.
   ScopedAlpmList needles(targets, [](const std::string& target) {
     return const_cast<char*>(target.c_str());
   });
@@ -712,7 +711,7 @@ static PackageList search_exact(alpm_list_t* dblist,
                                 const Options& opts) {
   PackageList results;
 
-  /* resolve each target individually from the repo pool */
+  // resolve each target individually from the repo pool
   for (std::string target : targets) {
     char* pkgname = target.data();
     char* reponame = pkgname;
@@ -856,7 +855,7 @@ PackageList Expac::Search(const std::vector<std::string>& targets,
       return SearchFiles(targets);
   }
 
-  /* should be unreachable */
+  // should be unreachable
   return {};
 }
 
@@ -871,7 +870,7 @@ static int read_targets_from_file(FILE* in, std::vector<std::string>* targets) {
 
     if (isspace(line[i]) || end) {
       line[i] = '\0';
-      /* avoid adding zero length arg, if multiple spaces separate args */
+      // avoid adding zero length arg, if multiple spaces separate args
       if (i > 0) {
         if (std::find(targets->begin(), targets->end(), line) ==
             targets->end()) {
@@ -941,10 +940,10 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  /* packages loaded via -p/--file are owned by expac (freed in ~Expac);
-   * -Q/-S results belong to their db and are released along with the
-   * handle. Either way, results itself is just a vector of pointers we
-   * don't own -- nothing to free here. */
+  // packages loaded via -p/--file are owned by expac (freed in ~Expac);
+  // -Q/-S results belong to their db and are released along with the
+  // handle. Either way, results itself is just a vector of pointers we
+  // don't own -- nothing to free here.
   PackageList results = expac->Search(targets, opts);
   if (results.empty()) {
     return 1;
@@ -957,4 +956,4 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
-/* vim: set et ts=2 sw=2: */
+// vim: set et ts=2 sw=2:

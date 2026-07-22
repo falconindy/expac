@@ -37,9 +37,9 @@ static size_t strtrim(char* str) {
   return right - left;
 }
 
-/* strtrim() operates in place on a raw buffer; run a std::string through it
- * via a fresh copy so callers never have to think about the underlying
- * buffer being resized out from under them. */
+// strtrim() operates in place on a raw buffer; run a std::string through it
+// via a fresh copy so callers never have to think about the underlying
+// buffer being resized out from under them.
 static std::string Trim(std::string s) {
   s.resize(strtrim(s.data()));
   return s;
@@ -139,4 +139,4 @@ int config_parse(config_t* config, const char* filename) {
   return parse_one_file(config, filename, &section);
 }
 
-/* vim: set et ts=2 sw=2: */
+// vim: set et ts=2 sw=2:

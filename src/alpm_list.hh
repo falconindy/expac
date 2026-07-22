@@ -3,10 +3,10 @@
 
 #include <alpm.h>
 
-/* Non-owning range-for view over an alpm_list_t, so callers can write
- * `for (T item : AlpmList<T>(list)) { ... }` instead of manually walking
- * ->next and casting ->data by hand. Read-only: it neither builds nor
- * frees the underlying list. */
+// Non-owning range-for view over an alpm_list_t, so callers can write
+// `for (T item : AlpmList<T>(list)) { ... }` instead of manually walking
+// ->next and casting ->data by hand. Read-only: it neither builds nor
+// frees the underlying list.
 template <typename T>
 class AlpmList {
  public:
@@ -36,12 +36,11 @@ class AlpmList {
   alpm_list_t* list_;
 };
 
-/* Owns the *nodes* of a freshly built alpm_list_t (never the items they
- * point to), for call sites that need to hand libalpm a list built from
- * some other container -- e.g. alpm_db_search()'s needle list built from
- * a std::vector<std::string>. fn projects each container element to the
- * void* libalpm expects.
- */
+// Owns the *nodes* of a freshly built alpm_list_t (never the items they
+// point to), for call sites that need to hand libalpm a list built from
+// some other container -- e.g. alpm_db_search()'s needle list built from
+// a std::vector<std::string>. fn projects each container element to the
+// void* libalpm expects.
 class ScopedAlpmList {
  public:
   template <typename Container, typename Fn>
@@ -62,6 +61,6 @@ class ScopedAlpmList {
   alpm_list_t* list_ = nullptr;
 };
 
-#endif /* _ALPM_LIST_H */
+#endif // _ALPM_LIST_H
 
-/* vim: set et ts=2 sw=2: */
+// vim: set et ts=2 sw=2:
