@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 #ifndef _ALPM_LIST_H
 #define _ALPM_LIST_H
 

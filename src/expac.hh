@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 #ifndef _EXPAC_H
 #define _EXPAC_H
 

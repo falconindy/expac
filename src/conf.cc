@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 #include "conf.hh"
 
 #include <ctype.h>
