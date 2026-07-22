@@ -40,6 +40,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "conf.hh"
@@ -78,10 +79,9 @@ static std::string alpm_backup_get_name(alpm_backup_t* bkup) {
   return bkup->name;
 }
 
-static double humanize_size(off_t bytes, const char target_unit,
-                            const char** label) {
+static std::pair<double, std::string> humanize_size(off_t bytes,
+                                                    const char target_unit) {
   static const int unitcount = sizeof(size_tokens) - 1;
-  static char label_buf[4];
 
   double val = (double)bytes;
   int index;
@@ -95,24 +95,22 @@ static double humanize_size(off_t bytes, const char target_unit,
     val /= 1024.0;
   }
 
-  if (label) {
-    sprintf(label_buf, "%c%s", size_tokens[index],
-            size_tokens[index] == 'B' ? "" : "iB");
-    *label = label_buf;
+  std::string label(1, size_tokens[index]);
+  if (size_tokens[index] != 'B') {
+    label += "iB";
   }
 
-  return val;
+  return {val, label};
 }
 
-static char* size_to_string(off_t pkgsize) {
-  static char out[64];
+static std::string size_to_string(off_t pkgsize, char humansize) {
+  char out[64];
 
-  if (opt_humansize == 'B') {
+  if (humansize == 'B') {
     snprintf(out, sizeof(out), "%jd", (intmax_t)pkgsize);
   } else {
-    const char* unit = NULL;
-    const double n = humanize_size(pkgsize, opt_humansize, &unit);
-    snprintf(out, sizeof(out), "%.2f %s", n, unit);
+    const auto [n, unit] = humanize_size(pkgsize, humansize);
+    snprintf(out, sizeof(out), "%.2f %s", n, unit.c_str());
   }
 
   return out;
@@ -545,10 +543,14 @@ static void print_pkg(alpm_pkg_t* pkg, const char* format) {
 
         /* sizes */
         case 'k': /* download size */
-          out += printf(fmt, size_to_string(alpm_pkg_get_size(pkg)));
+          out += printf(
+              fmt,
+              size_to_string(alpm_pkg_get_size(pkg), opt_humansize).c_str());
           break;
         case 'm': /* install size */
-          out += printf(fmt, size_to_string(alpm_pkg_get_isize(pkg)));
+          out += printf(
+              fmt,
+              size_to_string(alpm_pkg_get_isize(pkg), opt_humansize).c_str());
           break;
 
         /* lists */
