@@ -44,6 +44,7 @@
 #include <utility>
 #include <vector>
 
+#include "alpm_list.hh"
 #include "conf.hh"
 
 #ifndef PATH_MAX
@@ -298,16 +299,13 @@ static int print_escaped(const char* delim) {
 }
 
 /* Converts an alpm_list_t of T* into strings via fn(T*), e.g. turning a
- * list of alpm_depend_t* into their formatted name/version strings. The
- * static_cast<T*> here is the only cast involved -- unlike a function
- * pointer typedef'd to take void*, this is checked against fn's real
- * parameter type at compile time. */
+ * list of alpm_depend_t* into their formatted name/version strings. */
 template <typename T, typename Fn>
 static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list, Fn fn) {
   std::vector<std::string> result;
 
-  for (alpm_list_t* i = list; i; i = i->next) {
-    result.push_back(fn(static_cast<T*>(i->data)));
+  for (T* item : AlpmList<T*>(list)) {
+    result.push_back(fn(item));
   }
 
   return result;
@@ -318,8 +316,8 @@ static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list, Fn fn) {
 static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list) {
   std::vector<std::string> result;
 
-  for (alpm_list_t* i = list; i; i = i->next) {
-    result.emplace_back(static_cast<const char*>(i->data));
+  for (const char* item : AlpmList<const char*>(list)) {
+    result.emplace_back(item);
   }
 
   return result;
@@ -330,8 +328,8 @@ static std::vector<std::string> alpm_list_to_strings(alpm_list_t* list) {
 static std::vector<std::string> alpm_owned_list_to_strings(alpm_list_t* list) {
   std::vector<std::string> result;
 
-  for (alpm_list_t* i = list; i; i = i->next) {
-    result.emplace_back(static_cast<char*>(i->data));
+  for (char* item : AlpmList<char*>(list)) {
+    result.emplace_back(item);
   }
 
   alpm_list_free_inner(list, free);
@@ -414,8 +412,8 @@ static bool backup_file_is_modified(const alpm_backup_t* backup_file) {
 static std::vector<std::string> get_modified_files(alpm_pkg_t* pkg) {
   std::vector<std::string> modified_files;
 
-  for (alpm_list_t* i = alpm_pkg_get_backup(pkg); i; i = i->next) {
-    const alpm_backup_t* backup = static_cast<const alpm_backup_t*>(i->data);
+  for (const alpm_backup_t* backup :
+       AlpmList<const alpm_backup_t*>(alpm_pkg_get_backup(pkg))) {
     if (backup->hash && backup_file_is_modified(backup)) {
       modified_files.emplace_back(backup->name);
     }
@@ -660,10 +658,9 @@ static void print_pkg(alpm_pkg_t* pkg, Options& opts) {
 static PackageList all_packages(alpm_list_t* dbs) {
   PackageList packages;
 
-  for (alpm_list_t* i = dbs; i; i = i->next) {
-    alpm_db_t* db = static_cast<alpm_db_t*>(i->data);
-    for (alpm_list_t* j = alpm_db_get_pkgcache(db); j; j = j->next) {
-      packages.push_back(static_cast<alpm_pkg_t*>(j->data));
+  for (alpm_db_t* db : AlpmList<alpm_db_t*>(dbs)) {
+    for (alpm_pkg_t* pkg : AlpmList<alpm_pkg_t*>(alpm_db_get_pkgcache(db))) {
+      packages.push_back(pkg);
     }
   }
 
@@ -681,11 +678,11 @@ static PackageList search_packages(alpm_list_t* dbs,
     needles = alpm_list_add(needles, const_cast<char*>(target.c_str()));
   }
 
-  for (alpm_list_t* i = dbs; i; i = i->next) {
+  for (alpm_db_t* db : AlpmList<alpm_db_t*>(dbs)) {
     alpm_list_t* results = NULL;
-    alpm_db_search(static_cast<alpm_db_t*>(i->data), needles, &results);
-    for (alpm_list_t* j = results; j; j = j->next) {
-      packages.push_back(static_cast<alpm_pkg_t*>(j->data));
+    alpm_db_search(db, needles, &results);
+    for (alpm_pkg_t* pkg : AlpmList<alpm_pkg_t*>(results)) {
+      packages.push_back(pkg);
     }
     alpm_list_free(results);
   }
@@ -700,12 +697,11 @@ static PackageList search_groups(alpm_list_t* dbs,
   PackageList packages;
 
   for (const std::string& name : groupnames) {
-    for (alpm_list_t* j = dbs; j; j = j->next) {
-      alpm_group_t* grp =
-          alpm_db_get_group(static_cast<alpm_db_t*>(j->data), name.c_str());
+    for (alpm_db_t* db : AlpmList<alpm_db_t*>(dbs)) {
+      alpm_group_t* grp = alpm_db_get_group(db, name.c_str());
       if (grp != NULL) {
-        for (alpm_list_t* k = grp->packages; k; k = k->next) {
-          packages.push_back(static_cast<alpm_pkg_t*>(k->data));
+        for (alpm_pkg_t* pkg : AlpmList<alpm_pkg_t*>(grp->packages)) {
+          packages.push_back(pkg);
         }
       }
     }
@@ -731,8 +727,7 @@ static PackageList search_exact(alpm_list_t* dblist,
       reponame = NULL;
     }
 
-    for (alpm_list_t* r = dblist; r; r = r->next) {
-      alpm_db_t* repo = static_cast<alpm_db_t*>(r->data);
+    for (alpm_db_t* repo : AlpmList<alpm_db_t*>(dblist)) {
       alpm_pkg_t* pkg;
 
       if (reponame && strcmp(reponame, alpm_db_get_name(repo)) != 0) {
