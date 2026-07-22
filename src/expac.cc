@@ -40,6 +40,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "conf.hh"
@@ -652,39 +653,45 @@ static void print_pkg(alpm_pkg_t* pkg, const char* format) {
   }
 }
 
-static alpm_list_t* all_packages(alpm_list_t* dbs) {
-  alpm_list_t *i, *packages = NULL;
+static PackageList all_packages(alpm_list_t* dbs) {
+  PackageList packages;
 
-  for (i = dbs; i; i = i->next) {
-    packages = alpm_list_join(
-        packages,
-        alpm_list_copy(alpm_db_get_pkgcache(static_cast<alpm_db_t*>(i->data))));
+  for (alpm_list_t* i = dbs; i; i = i->next) {
+    alpm_db_t* db = static_cast<alpm_db_t*>(i->data);
+    for (alpm_list_t* j = alpm_db_get_pkgcache(db); j; j = j->next) {
+      packages.push_back(static_cast<alpm_pkg_t*>(j->data));
+    }
   }
 
   return packages;
 }
 
-static alpm_list_t* search_packages(alpm_list_t* dbs, alpm_list_t* targets) {
-  alpm_list_t *i, *packages = NULL;
+static PackageList search_packages(alpm_list_t* dbs, alpm_list_t* targets) {
+  PackageList packages;
 
-  for (i = dbs; i; i = i->next) {
+  for (alpm_list_t* i = dbs; i; i = i->next) {
     alpm_list_t* results = NULL;
     alpm_db_search(static_cast<alpm_db_t*>(i->data), targets, &results);
-    packages = alpm_list_join(packages, results);
+    for (alpm_list_t* j = results; j; j = j->next) {
+      packages.push_back(static_cast<alpm_pkg_t*>(j->data));
+    }
+    alpm_list_free(results);
   }
 
   return packages;
 }
 
-static alpm_list_t* search_groups(alpm_list_t* dbs, alpm_list_t* groupnames) {
-  alpm_list_t *i, *j, *packages = NULL;
+static PackageList search_groups(alpm_list_t* dbs, alpm_list_t* groupnames) {
+  PackageList packages;
 
-  for (i = groupnames; i; i = i->next) {
-    for (j = dbs; j; j = j->next) {
+  for (alpm_list_t* i = groupnames; i; i = i->next) {
+    for (alpm_list_t* j = dbs; j; j = j->next) {
       alpm_group_t* grp = alpm_db_get_group(static_cast<alpm_db_t*>(j->data),
                                             static_cast<const char*>(i->data));
       if (grp != NULL) {
-        packages = alpm_list_join(packages, alpm_list_copy(grp->packages));
+        for (alpm_list_t* k = grp->packages; k; k = k->next) {
+          packages.push_back(static_cast<alpm_pkg_t*>(k->data));
+        }
       }
     }
   }
@@ -692,13 +699,12 @@ static alpm_list_t* search_groups(alpm_list_t* dbs, alpm_list_t* groupnames) {
   return packages;
 }
 
-static alpm_list_t* search_exact(alpm_list_t* dblist, alpm_list_t* targets) {
-  alpm_list_t* results = NULL;
+static PackageList search_exact(alpm_list_t* dblist, alpm_list_t* targets) {
+  PackageList results;
 
   /* resolve each target individually from the repo pool */
   for (alpm_list_t* t = targets; t; t = t->next) {
     char *pkgname, *reponame;
-    alpm_list_t* r;
     int found = 0;
 
     pkgname = reponame = static_cast<char*>(t->data);
@@ -708,7 +714,7 @@ static alpm_list_t* search_exact(alpm_list_t* dblist, alpm_list_t* targets) {
       reponame = NULL;
     }
 
-    for (r = dblist; r; r = r->next) {
+    for (alpm_list_t* r = dblist; r; r = r->next) {
       alpm_db_t* repo = static_cast<alpm_db_t*>(r->data);
       alpm_pkg_t* pkg;
 
@@ -722,7 +728,7 @@ static alpm_list_t* search_exact(alpm_list_t* dblist, alpm_list_t* targets) {
       }
 
       found = 1;
-      results = alpm_list_add(results, pkg);
+      results.push_back(pkg);
       if (opt_readone) {
         break;
       }
@@ -736,7 +742,7 @@ static alpm_list_t* search_exact(alpm_list_t* dblist, alpm_list_t* targets) {
   return results;
 }
 
-static alpm_list_t* resolve_targets(alpm_list_t* dblist, alpm_list_t* targets) {
+static PackageList resolve_targets(alpm_list_t* dblist, alpm_list_t* targets) {
   if (targets == NULL) {
     return all_packages(dblist);
   }
@@ -760,21 +766,30 @@ static void targets_freep(alpm_list_t** targets) {
 Expac::Expac(alpm_handle_t* alpm) : alpm_(alpm) {}
 
 Expac::~Expac() {
+  for (alpm_pkg_t* pkg : owned_packages_) {
+    alpm_pkg_free(pkg);
+  }
+
   if (alpm_ != nullptr) {
     alpm_release(alpm_);
   }
 }
 
-Expac::Expac(Expac&& other) noexcept : alpm_(other.alpm_) {
+Expac::Expac(Expac&& other) noexcept
+    : alpm_(other.alpm_), owned_packages_(std::move(other.owned_packages_)) {
   other.alpm_ = nullptr;
 }
 
 Expac& Expac::operator=(Expac&& other) noexcept {
   if (this != &other) {
+    for (alpm_pkg_t* pkg : owned_packages_) {
+      alpm_pkg_free(pkg);
+    }
     if (alpm_ != nullptr) {
       alpm_release(alpm_);
     }
     alpm_ = other.alpm_;
+    owned_packages_ = std::move(other.owned_packages_);
     other.alpm_ = nullptr;
   }
 
@@ -814,10 +829,10 @@ std::unique_ptr<Expac> Expac::New(const char* config_file) {
   return std::unique_ptr<Expac>(new Expac(alpm));
 }
 
-alpm_list_t* Expac::SearchFiles(alpm_list_t* targets) const {
-  alpm_list_t *i, *r = NULL;
+PackageList Expac::SearchFiles(alpm_list_t* targets) {
+  PackageList r;
 
-  for (i = targets; i; i = i->next) {
+  for (alpm_list_t* i = targets; i; i = i->next) {
     const char* path = static_cast<const char*>(i->data);
     alpm_pkg_t* pkg;
 
@@ -827,28 +842,26 @@ alpm_list_t* Expac::SearchFiles(alpm_list_t* targets) const {
       continue;
     }
 
-    r = alpm_list_add(r, pkg);
+    owned_packages_.push_back(pkg);
+    r.push_back(pkg);
   }
 
   return r;
 }
 
-alpm_list_t* Expac::SearchLocal(alpm_list_t* targets) const {
-  alpm_list_t *dblist, *r;
-
-  dblist = alpm_list_add(NULL, alpm_get_localdb(alpm_));
-  r = resolve_targets(dblist, targets);
+PackageList Expac::SearchLocal(alpm_list_t* targets) const {
+  alpm_list_t* dblist = alpm_list_add(NULL, alpm_get_localdb(alpm_));
+  PackageList r = resolve_targets(dblist, targets);
   alpm_list_free(dblist);
 
   return r;
 }
 
-alpm_list_t* Expac::SearchSync(alpm_list_t* targets) const {
+PackageList Expac::SearchSync(alpm_list_t* targets) const {
   return resolve_targets(alpm_get_syncdbs(alpm_), targets);
 }
 
-alpm_list_t* Expac::Search(package_corpus_t corpus,
-                           alpm_list_t* targets) const {
+PackageList Expac::Search(package_corpus_t corpus, alpm_list_t* targets) {
   switch (corpus) {
     case CORPUS_LOCAL:
       return SearchLocal(targets);
@@ -859,7 +872,7 @@ alpm_list_t* Expac::Search(package_corpus_t corpus,
   }
 
   /* should be unreachable */
-  return NULL;
+  return {};
 }
 
 static int read_targets_from_file(FILE* in, alpm_list_t** targets) {
@@ -922,7 +935,6 @@ static int process_targets(int argc, char** argv, alpm_list_t** targets) {
 }
 
 int main(int argc, char* argv[]) {
-  alpm_list_t* results = NULL;
   _cleanup_(targets_freep) alpm_list_t* targets = NULL;
   int r;
 
@@ -941,23 +953,18 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  results = expac->Search(opt_corpus, targets);
-  if (results == NULL) {
+  /* packages loaded via -p/--file are owned by expac (freed in ~Expac);
+   * -Q/-S results belong to their db and are released along with the
+   * handle. Either way, results itself is just a vector of pointers we
+   * don't own -- nothing to free here. */
+  PackageList results = expac->Search(opt_corpus, targets);
+  if (results.empty()) {
     return 1;
   }
 
-  for (alpm_list_t* i = results; i; i = i->next) {
-    print_pkg(static_cast<alpm_pkg_t*>(i->data), opt_format);
+  for (alpm_pkg_t* pkg : results) {
+    print_pkg(pkg, opt_format);
   }
-
-  if (opt_corpus == CORPUS_FILE) {
-    /* packages loaded via alpm_pkg_load() are owned by us and must be
-     * freed explicitly; packages from -Q/-S belong to their db and are
-     * released when the alpm handle is (~Expac releases the alpm handle
-     * itself, but not packages loaded out of it via alpm_pkg_load()). */
-    alpm_list_free_inner(results, (alpm_list_fn_free)alpm_pkg_free);
-  }
-  alpm_list_free(results);
 
   return 0;
 }
