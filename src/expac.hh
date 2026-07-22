@@ -22,7 +22,9 @@ using PackageList = std::vector<alpm_pkg_t*>;
 
 /* Owns an alpm_handle_t, initialized from a pacman.conf-style config file.
  * Only ever constructed via New(); the private constructor keeps callers
- * from ending up with a half-initialized instance on failure.
+ * from ending up with a half-initialized instance on failure. Only ever
+ * held via the unique_ptr New() returns, so it's neither copyable nor
+ * movable -- there's no need to move the object itself, only the pointer.
  *
  * Also owns any packages loaded via SearchFiles() (alpm_pkg_load() results
  * belong to the caller, unlike -Q/-S results which belong to their db and
@@ -37,8 +39,8 @@ class Expac {
 
   Expac(const Expac&) = delete;
   Expac& operator=(const Expac&) = delete;
-  Expac(Expac&& other) noexcept;
-  Expac& operator=(Expac&& other) noexcept;
+  Expac(Expac&&) = delete;
+  Expac& operator=(Expac&&) = delete;
 
   PackageList SearchFiles(alpm_list_t* targets);
   PackageList SearchLocal(alpm_list_t* targets) const;

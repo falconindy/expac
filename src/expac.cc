@@ -40,7 +40,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "conf.hh"
@@ -770,30 +769,7 @@ Expac::~Expac() {
     alpm_pkg_free(pkg);
   }
 
-  if (alpm_ != nullptr) {
-    alpm_release(alpm_);
-  }
-}
-
-Expac::Expac(Expac&& other) noexcept
-    : alpm_(other.alpm_), owned_packages_(std::move(other.owned_packages_)) {
-  other.alpm_ = nullptr;
-}
-
-Expac& Expac::operator=(Expac&& other) noexcept {
-  if (this != &other) {
-    for (alpm_pkg_t* pkg : owned_packages_) {
-      alpm_pkg_free(pkg);
-    }
-    if (alpm_ != nullptr) {
-      alpm_release(alpm_);
-    }
-    alpm_ = other.alpm_;
-    owned_packages_ = std::move(other.owned_packages_);
-    other.alpm_ = nullptr;
-  }
-
-  return *this;
+  alpm_release(alpm_);
 }
 
 std::unique_ptr<Expac> Expac::New(const char* config_file) {
