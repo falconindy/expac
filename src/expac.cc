@@ -38,6 +38,7 @@
 #include <string.h>
 #include <time.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -751,39 +752,44 @@ static alpm_list_t* resolve_targets(alpm_list_t* dblist, alpm_list_t* targets) {
   return search_exact(dblist, targets);
 }
 
-static void expac_free(expac_t* expac) {
-  if (expac == NULL) {
-    return;
-  }
-
-  alpm_release(expac->alpm);
-  free(expac);
-}
-
-static void expac_freep(expac_t** expac) { expac_free(*expac); }
-
 static void targets_freep(alpm_list_t** targets) {
   alpm_list_free_inner(*targets, free);
   alpm_list_free(*targets);
 }
 
-static int expac_new(expac_t** expac, const char* config_file) {
-  expac_t* e;
-  enum _alpm_errno_t alpm_errno = static_cast<enum _alpm_errno_t>(0);
+Expac::Expac(alpm_handle_t* alpm) : alpm_(alpm) {}
+
+Expac::~Expac() {
+  if (alpm_ != nullptr) {
+    alpm_release(alpm_);
+  }
+}
+
+Expac::Expac(Expac&& other) noexcept : alpm_(other.alpm_) {
+  other.alpm_ = nullptr;
+}
+
+Expac& Expac::operator=(Expac&& other) noexcept {
+  if (this != &other) {
+    if (alpm_ != nullptr) {
+      alpm_release(alpm_);
+    }
+    alpm_ = other.alpm_;
+    other.alpm_ = nullptr;
+  }
+
+  return *this;
+}
+
+std::unique_ptr<Expac> Expac::New(const char* config_file) {
   config_t config;
+
+  if (config_parse(&config, config_file) < 0) {
+    return nullptr;
+  }
+
   const char* dbroot = "/";
   const char* dbpath = "/var/lib/pacman";
-  int r;
-
-  e = static_cast<expac_t*>(calloc(1, sizeof(*e)));
-  if (e == NULL) {
-    return -ENOMEM;
-  }
-
-  r = config_parse(&config, config_file);
-  if (r < 0) {
-    return r;
-  }
 
   if (config.dbpath) {
     dbpath = config.dbpath->c_str();
@@ -793,32 +799,31 @@ static int expac_new(expac_t** expac, const char* config_file) {
     dbroot = config.dbroot->c_str();
   }
 
-  e->alpm = alpm_initialize(dbroot, dbpath, &alpm_errno);
-  if (!e->alpm) {
+  enum _alpm_errno_t alpm_errno = static_cast<enum _alpm_errno_t>(0);
+  alpm_handle_t* alpm = alpm_initialize(dbroot, dbpath, &alpm_errno);
+  if (alpm == nullptr) {
     fprintf(stderr, "error: failed to initialize alpm: %s\n",
             alpm_strerror(alpm_errno));
-    return -alpm_errno;
+    return nullptr;
   }
 
   for (const auto& repo : config.repos) {
-    alpm_register_syncdb(e->alpm, repo.c_str(), 0);
+    alpm_register_syncdb(alpm, repo.c_str(), 0);
   }
 
-  *expac = e;
-
-  return 0;
+  return std::unique_ptr<Expac>(new Expac(alpm));
 }
 
-static alpm_list_t* expac_search_files(expac_t* expac, alpm_list_t* targets) {
+alpm_list_t* Expac::SearchFiles(alpm_list_t* targets) const {
   alpm_list_t *i, *r = NULL;
 
   for (i = targets; i; i = i->next) {
     const char* path = static_cast<const char*>(i->data);
     alpm_pkg_t* pkg;
 
-    if (alpm_pkg_load(expac->alpm, path, 0, 0, &pkg) != 0) {
+    if (alpm_pkg_load(alpm_, path, 0, 0, &pkg) != 0) {
       fprintf(stderr, "error: %s: %s\n", path,
-              alpm_strerror(alpm_errno(expac->alpm)));
+              alpm_strerror(alpm_errno(alpm_)));
       continue;
     }
 
@@ -828,29 +833,29 @@ static alpm_list_t* expac_search_files(expac_t* expac, alpm_list_t* targets) {
   return r;
 }
 
-static alpm_list_t* expac_search_local(expac_t* expac, alpm_list_t* targets) {
+alpm_list_t* Expac::SearchLocal(alpm_list_t* targets) const {
   alpm_list_t *dblist, *r;
 
-  dblist = alpm_list_add(NULL, alpm_get_localdb(expac->alpm));
+  dblist = alpm_list_add(NULL, alpm_get_localdb(alpm_));
   r = resolve_targets(dblist, targets);
   alpm_list_free(dblist);
 
   return r;
 }
 
-static alpm_list_t* expac_search_sync(expac_t* expac, alpm_list_t* targets) {
-  return resolve_targets(alpm_get_syncdbs(expac->alpm), targets);
+alpm_list_t* Expac::SearchSync(alpm_list_t* targets) const {
+  return resolve_targets(alpm_get_syncdbs(alpm_), targets);
 }
 
-static alpm_list_t* expac_search(expac_t* expac, package_corpus_t corpus,
-                                 alpm_list_t* targets) {
+alpm_list_t* Expac::Search(package_corpus_t corpus,
+                           alpm_list_t* targets) const {
   switch (corpus) {
     case CORPUS_LOCAL:
-      return expac_search_local(expac, targets);
+      return SearchLocal(targets);
     case CORPUS_SYNC:
-      return expac_search_sync(expac, targets);
+      return SearchSync(targets);
     case CORPUS_FILE:
-      return expac_search_files(expac, targets);
+      return SearchFiles(targets);
   }
 
   /* should be unreachable */
@@ -919,7 +924,6 @@ static int process_targets(int argc, char** argv, alpm_list_t** targets) {
 int main(int argc, char* argv[]) {
   alpm_list_t* results = NULL;
   _cleanup_(targets_freep) alpm_list_t* targets = NULL;
-  _cleanup_(expac_freep) expac_t* expac = NULL;
   int r;
 
   r = parse_options(&argc, &argv);
@@ -932,12 +936,12 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  r = expac_new(&expac, opt_config_file);
-  if (r < 0) {
+  std::unique_ptr<Expac> expac = Expac::New(opt_config_file);
+  if (!expac) {
     return 1;
   }
 
-  results = expac_search(expac, opt_corpus, targets);
+  results = expac->Search(opt_corpus, targets);
   if (results == NULL) {
     return 1;
   }
@@ -949,7 +953,8 @@ int main(int argc, char* argv[]) {
   if (opt_corpus == CORPUS_FILE) {
     /* packages loaded via alpm_pkg_load() are owned by us and must be
      * freed explicitly; packages from -Q/-S belong to their db and are
-     * released when the alpm handle is (see expac_freep). */
+     * released when the alpm handle is (~Expac releases the alpm handle
+     * itself, but not packages loaded out of it via alpm_pkg_load()). */
     alpm_list_free_inner(results, (alpm_list_fn_free)alpm_pkg_free);
   }
   alpm_list_free(results);
