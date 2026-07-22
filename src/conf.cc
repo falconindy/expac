@@ -9,8 +9,6 @@
 #include <fstream>
 #include <string>
 
-#include "util.hh"
-
 static size_t strtrim(char* str) {
   char *left = str, *right;
 

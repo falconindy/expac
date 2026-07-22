@@ -4,6 +4,7 @@
 #include <alpm.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 typedef enum package_corpus_t {
@@ -58,10 +59,13 @@ class Expac {
   Expac(Expac&&) = delete;
   Expac& operator=(Expac&&) = delete;
 
-  PackageList SearchFiles(alpm_list_t* targets);
-  PackageList SearchLocal(alpm_list_t* targets, const Options& opts) const;
-  PackageList SearchSync(alpm_list_t* targets, const Options& opts) const;
-  PackageList Search(alpm_list_t* targets, const Options& opts);
+  PackageList SearchFiles(const std::vector<std::string>& targets);
+  PackageList SearchLocal(const std::vector<std::string>& targets,
+                          const Options& opts) const;
+  PackageList SearchSync(const std::vector<std::string>& targets,
+                         const Options& opts) const;
+  PackageList Search(const std::vector<std::string>& targets,
+                     const Options& opts);
 
  private:
   explicit Expac(alpm_handle_t* alpm);

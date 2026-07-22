@@ -27,7 +27,6 @@ expac_exe = executable(
   files('''
     src/expac.cc
     src/conf.cc src/conf.hh
-    src/util.hh
   '''.split()),
   dependencies : [
     libalpm,

@@ -38,13 +38,13 @@
 #include <string.h>
 #include <time.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "conf.hh"
-#include "util.hh"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -670,28 +670,39 @@ static PackageList all_packages(alpm_list_t* dbs) {
   return packages;
 }
 
-static PackageList search_packages(alpm_list_t* dbs, alpm_list_t* targets) {
+static PackageList search_packages(alpm_list_t* dbs,
+                                   const std::vector<std::string>& targets) {
   PackageList packages;
+
+  /* alpm_db_search() takes its needles as an alpm_list_t; build one that
+   * just borrows the vector's strings for the duration of the call. */
+  alpm_list_t* needles = NULL;
+  for (const std::string& target : targets) {
+    needles = alpm_list_add(needles, const_cast<char*>(target.c_str()));
+  }
 
   for (alpm_list_t* i = dbs; i; i = i->next) {
     alpm_list_t* results = NULL;
-    alpm_db_search(static_cast<alpm_db_t*>(i->data), targets, &results);
+    alpm_db_search(static_cast<alpm_db_t*>(i->data), needles, &results);
     for (alpm_list_t* j = results; j; j = j->next) {
       packages.push_back(static_cast<alpm_pkg_t*>(j->data));
     }
     alpm_list_free(results);
   }
 
+  alpm_list_free(needles);
+
   return packages;
 }
 
-static PackageList search_groups(alpm_list_t* dbs, alpm_list_t* groupnames) {
+static PackageList search_groups(alpm_list_t* dbs,
+                                 const std::vector<std::string>& groupnames) {
   PackageList packages;
 
-  for (alpm_list_t* i = groupnames; i; i = i->next) {
+  for (const std::string& name : groupnames) {
     for (alpm_list_t* j = dbs; j; j = j->next) {
-      alpm_group_t* grp = alpm_db_get_group(static_cast<alpm_db_t*>(j->data),
-                                            static_cast<const char*>(i->data));
+      alpm_group_t* grp =
+          alpm_db_get_group(static_cast<alpm_db_t*>(j->data), name.c_str());
       if (grp != NULL) {
         for (alpm_list_t* k = grp->packages; k; k = k->next) {
           packages.push_back(static_cast<alpm_pkg_t*>(k->data));
@@ -703,16 +714,17 @@ static PackageList search_groups(alpm_list_t* dbs, alpm_list_t* groupnames) {
   return packages;
 }
 
-static PackageList search_exact(alpm_list_t* dblist, alpm_list_t* targets,
+static PackageList search_exact(alpm_list_t* dblist,
+                                const std::vector<std::string>& targets,
                                 const Options& opts) {
   PackageList results;
 
   /* resolve each target individually from the repo pool */
-  for (alpm_list_t* t = targets; t; t = t->next) {
-    char *pkgname, *reponame;
-    int found = 0;
+  for (std::string target : targets) {
+    char* pkgname = target.data();
+    char* reponame = pkgname;
+    bool found = false;
 
-    pkgname = reponame = static_cast<char*>(t->data);
     if (strchr(pkgname, '/')) {
       strsep(&pkgname, "/");
     } else {
@@ -732,7 +744,7 @@ static PackageList search_exact(alpm_list_t* dblist, alpm_list_t* targets,
         continue;
       }
 
-      found = 1;
+      found = true;
       results.push_back(pkg);
       if (opts.readone) {
         break;
@@ -747,9 +759,10 @@ static PackageList search_exact(alpm_list_t* dblist, alpm_list_t* targets,
   return results;
 }
 
-static PackageList resolve_targets(alpm_list_t* dblist, alpm_list_t* targets,
+static PackageList resolve_targets(alpm_list_t* dblist,
+                                   const std::vector<std::string>& targets,
                                    const Options& opts) {
-  if (targets == NULL) {
+  if (targets.empty()) {
     return all_packages(dblist);
   }
 
@@ -807,15 +820,14 @@ std::unique_ptr<Expac> Expac::New(const char* config_file) {
   return std::unique_ptr<Expac>(new Expac(alpm));
 }
 
-PackageList Expac::SearchFiles(alpm_list_t* targets) {
+PackageList Expac::SearchFiles(const std::vector<std::string>& targets) {
   PackageList r;
 
-  for (alpm_list_t* i = targets; i; i = i->next) {
-    const char* path = static_cast<const char*>(i->data);
+  for (const std::string& path : targets) {
     alpm_pkg_t* pkg;
 
-    if (alpm_pkg_load(alpm_, path, 0, 0, &pkg) != 0) {
-      fprintf(stderr, "error: %s: %s\n", path,
+    if (alpm_pkg_load(alpm_, path.c_str(), 0, 0, &pkg) != 0) {
+      fprintf(stderr, "error: %s: %s\n", path.c_str(),
               alpm_strerror(alpm_errno(alpm_)));
       continue;
     }
@@ -827,7 +839,7 @@ PackageList Expac::SearchFiles(alpm_list_t* targets) {
   return r;
 }
 
-PackageList Expac::SearchLocal(alpm_list_t* targets,
+PackageList Expac::SearchLocal(const std::vector<std::string>& targets,
                                const Options& opts) const {
   alpm_list_t* dblist = alpm_list_add(NULL, alpm_get_localdb(alpm_));
   PackageList r = resolve_targets(dblist, targets, opts);
@@ -836,11 +848,13 @@ PackageList Expac::SearchLocal(alpm_list_t* targets,
   return r;
 }
 
-PackageList Expac::SearchSync(alpm_list_t* targets, const Options& opts) const {
+PackageList Expac::SearchSync(const std::vector<std::string>& targets,
+                              const Options& opts) const {
   return resolve_targets(alpm_get_syncdbs(alpm_), targets, opts);
 }
 
-PackageList Expac::Search(alpm_list_t* targets, const Options& opts) {
+PackageList Expac::Search(const std::vector<std::string>& targets,
+                          const Options& opts) {
   switch (opts.corpus) {
     case CORPUS_LOCAL:
       return SearchLocal(targets, opts);
@@ -854,7 +868,7 @@ PackageList Expac::Search(alpm_list_t* targets, const Options& opts) {
   return {};
 }
 
-static int read_targets_from_file(FILE* in, alpm_list_t** targets) {
+static int read_targets_from_file(FILE* in, std::vector<std::string>* targets) {
   char line[BUFSIZ];
   int i = 0, end = 0, targets_added = 0;
 
@@ -867,8 +881,9 @@ static int read_targets_from_file(FILE* in, alpm_list_t** targets) {
       line[i] = '\0';
       /* avoid adding zero length arg, if multiple spaces separate args */
       if (i > 0) {
-        if (!alpm_list_find_str(*targets, line)) {
-          *targets = alpm_list_add(*targets, strdup(line));
+        if (std::find(targets->begin(), targets->end(), line) ==
+            targets->end()) {
+          targets->emplace_back(line);
         }
         i = 0;
         ++targets_added;
@@ -885,7 +900,8 @@ static int read_targets_from_file(FILE* in, alpm_list_t** targets) {
   return targets_added;
 }
 
-static int process_targets(int argc, char** argv, alpm_list_t** targets) {
+static int process_targets(int argc, char** argv,
+                           std::vector<std::string>* targets) {
   int allow_stdin;
 
   allow_stdin = !isatty(STDIN_FILENO);
@@ -906,7 +922,7 @@ static int process_targets(int argc, char** argv, alpm_list_t** targets) {
 
       allow_stdin = 0;
     } else {
-      *targets = alpm_list_add(*targets, strdup(argv[i]));
+      targets->emplace_back(argv[i]);
     }
   }
 
@@ -915,11 +931,7 @@ static int process_targets(int argc, char** argv, alpm_list_t** targets) {
 
 int main(int argc, char* argv[]) {
   Options opts;
-  alpm_list_t* targets = NULL;
-  auto targets_guard = MakeScopeGuard([&] {
-    alpm_list_free_inner(targets, free);
-    alpm_list_free(targets);
-  });
+  std::vector<std::string> targets;
   int r;
 
   r = parse_options(&argc, &argv, &opts);
